@@ -11,10 +11,7 @@ htmlcov/
 *.gcov
 #*
 testtmp/
-run_filesstest
-run_dprtest
-run_tptest
-run_tpcltest
+run_*
 
 # Object files
 *.o

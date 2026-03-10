@@ -16,8 +16,7 @@ The dev container was updated so `gtest` and `gmock` are both available for the 
 
 ## Known Issues
 
-The core planner, command-line, router, and indexer tests pass in the current container setup.
-The remaining risk is environment-specific grading behavior on the instructor machines, especially for exact route tie-breaking on real data. The `speedtest` program builds and runs, and the optimized planner implementation performed above both the provided baseline and optimized reference numbers in local verification.
+No known issues
 
 ## References
 

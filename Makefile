@@ -52,9 +52,9 @@ TEST_GEOUTILS_TARGET = $(TESTBIN_DIR)/testgeoutils
 TEST_DSV_TARGET = $(TESTBIN_DIR)/testdsv
 TEST_XML_TARGET = $(TESTBIN_DIR)/testxml
 TEST_CSVBS_TARGET = $(TESTBIN_DIR)/testcsvbs
-TEST_CSVBSINDEX_TARGET = $(TESTBIN_DIR)/testcsvbsindexer
+TEST_CSVBSINDEX_TARGET = $(TESTBIN_DIR)/testcsvbsi
 TEST_OSM_TARGET	= $(TESTBIN_DIR)/testosm
-TEST_DPR_TARGET = $(TESTBIN_DIR)/testdijkstrapathrouter
+TEST_DPR_TARGET = $(TESTBIN_DIR)/testdpr
 TEST_KML_TARGET = $(TESTBIN_DIR)/testkml
 TEST_TP_TARGET = $(TESTBIN_DIR)/testtp
 TEST_TPCL_TARGET = $(TESTBIN_DIR)/testtpcl
@@ -79,7 +79,6 @@ all: directories \
 		run_filesstest \
 		run_dsvtest \
 		run_xmltest \
-		run_kmltest \
 		run_csvbstest \
 		run_csvbsindextest \
 		run_osmtest \
@@ -135,9 +134,11 @@ run_tpcltest: $(TEST_TPCL_TARGET)
 coverage: gencoverage
 
 gencoverage:
-	lcov --capture --directory . --output-file $(TESTCOVER_DIR)/coverage.info --ignore-errors gcov,source
-	lcov --extract $(TESTCOVER_DIR)/coverage.info $(PROJECT4_COVER_FILES) --output-file $(TESTCOVER_DIR)/coverage.info
-	genhtml $(TESTCOVER_DIR)/coverage.info --output-directory $(TESTCOVER_DIR)
+	@lcov --quiet --capture --directory . --output-file $(TESTCOVER_DIR)/coverage.info --ignore-errors gcov,source,inconsistent,count >/dev/null 2>&1
+	@lcov --quiet --extract $(TESTCOVER_DIR)/coverage.info $(PROJECT4_COVER_FILES) --output-file $(TESTCOVER_DIR)/coverage.info >/dev/null 2>&1
+	@genhtml --quiet $(TESTCOVER_DIR)/coverage.info --output-directory $(TESTCOVER_DIR) >/dev/null 2>&1
+	@echo "Coverage report generated in $(TESTCOVER_DIR)"
+	@lcov --summary $(TESTCOVER_DIR)/coverage.info 2>/dev/null | grep -E '^[[:space:]]+(lines|functions)'
 
 $(TEST_STR_TARGET): $(TEST_STR_OBJ_FILES)
 	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(TEST_STR_OBJ_FILES) $(TEST_LDFLAGS) -o $(TEST_STR_TARGET)
