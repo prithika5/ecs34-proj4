@@ -10,6 +10,11 @@ htmlcov/
 *.gcno
 *.gcov
 #*
+testtmp/
+run_filesstest
+run_dprtest
+run_tptest
+run_tpcltest
 
 # Object files
 *.o

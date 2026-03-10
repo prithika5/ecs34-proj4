@@ -294,3 +294,95 @@ TEST(CSVOSMTransporationPlanner, PathDescription){
     EXPECT_EQ(Description3, ExpectedDescription3);
 
 }
+
+TEST(CSVOSMTransporationPlanner, SameSourceDestinationTest){
+    auto InStreamOSM = std::make_shared<CStringDataSource>( "<?xml version='1.0' encoding='UTF-8'?>"
+                                                            "<osm version=\"0.6\" generator=\"osmconvert 0.8.5\">"
+                                                            "<node id=\"1\" lat=\"38.5\" lon=\"-121.7\"/>"
+                                                            "</osm>");
+    auto InStreamStops = std::make_shared<CStringDataSource>("stop_id,node_id");
+    auto InStreamRoutes = std::make_shared<CStringDataSource>("route,stop_id");
+    auto XMLReader = std::make_shared<CXMLReader>(InStreamOSM);
+    auto CSVReaderStops = std::make_shared<CDSVReader>(InStreamStops,',');
+    auto CSVReaderRoutes = std::make_shared<CDSVReader>(InStreamRoutes,',');
+    auto StreetMap = std::make_shared<COpenStreetMap>(XMLReader);
+    auto BusSystem = std::make_shared<CCSVBusSystem>(CSVReaderStops, CSVReaderRoutes);
+    auto Config = std::make_shared<STransportationPlannerConfig>(StreetMap,BusSystem);
+    CDijkstraTransportationPlanner Planner(Config);
+
+    std::vector<CTransportationPlanner::TNodeID> ShortestPath;
+    EXPECT_EQ(Planner.FindShortestPath(1,1,ShortestPath), 0.0);
+    std::vector<CTransportationPlanner::TNodeID> ExpectedShortestPath = {1};
+    EXPECT_EQ(ShortestPath, ExpectedShortestPath);
+
+    std::vector<CTransportationPlanner::TTripStep> FastestPath;
+    EXPECT_EQ(Planner.FindFastestPath(1,1,FastestPath), 0.0);
+    std::vector<CTransportationPlanner::TTripStep> ExpectedFastestPath = {{CTransportationPlanner::ETransportationMode::Walk,1}};
+    EXPECT_EQ(FastestPath, ExpectedFastestPath);
+}
+
+TEST(CSVOSMTransporationPlanner, BikeBlockedAndDefaultSpeedTest){
+    auto InStreamOSM = std::make_shared<CStringDataSource>( "<?xml version='1.0' encoding='UTF-8'?>"
+                                                            "<osm version=\"0.6\" generator=\"osmconvert 0.8.5\">"
+                                                            "<node id=\"1\" lat=\"38.5\" lon=\"-121.7\"/>"
+                                                            "<node id=\"2\" lat=\"38.6\" lon=\"-121.7\"/>"
+                                                            "<node id=\"3\" lat=\"38.6\" lon=\"-121.8\"/>"
+                                                            "<way id=\"10\">"
+                                                            "<nd ref=\"1\"/>"
+                                                            "<nd ref=\"2\"/>"
+                                                            "<tag k=\"bicycle\" v=\"no\"/>"
+                                                            "</way>"
+                                                            "<way id=\"11\">"
+                                                            "<nd ref=\"2\"/>"
+                                                            "<nd ref=\"3\"/>"
+                                                            "</way>"
+                                                            "</osm>");
+    auto InStreamStops = std::make_shared<CStringDataSource>("stop_id,node_id\n"
+                                                            "101,1\n"
+                                                            "102,2\n"
+                                                            "103,3");
+    auto InStreamRoutes = std::make_shared<CStringDataSource>("route,stop_id\n"
+                                                             "A,101\n"
+                                                             "A,102\n"
+                                                             "A,103");
+    auto XMLReader = std::make_shared<CXMLReader>(InStreamOSM);
+    auto CSVReaderStops = std::make_shared<CDSVReader>(InStreamStops,',');
+    auto CSVReaderRoutes = std::make_shared<CDSVReader>(InStreamRoutes,',');
+    auto StreetMap = std::make_shared<COpenStreetMap>(XMLReader);
+    auto BusSystem = std::make_shared<CCSVBusSystem>(CSVReaderStops, CSVReaderRoutes);
+    auto Config = std::make_shared<STransportationPlannerConfig>(StreetMap,BusSystem);
+    CDijkstraTransportationPlanner Planner(Config);
+
+    std::vector<CTransportationPlanner::TTripStep> FastestPath;
+    double Dist12 = SGeographicUtils::HaversineDistanceInMiles(CStreetMap::SLocation(38.5,-121.7),CStreetMap::SLocation(38.6,-121.7));
+    double Dist23 = SGeographicUtils::HaversineDistanceInMiles(CStreetMap::SLocation(38.6,-121.7),CStreetMap::SLocation(38.6,-121.8));
+    double ExpectedTime = (Dist12 + Dist23) / 25.0 + (30.0 / 3600.0) * 2.0;
+    std::vector<CTransportationPlanner::TTripStep> ExpectedFastestPath = {{CTransportationPlanner::ETransportationMode::Walk,1},
+                                                                           {CTransportationPlanner::ETransportationMode::Bus,2},
+                                                                           {CTransportationPlanner::ETransportationMode::Bus,3}};
+    EXPECT_EQ(Planner.FindFastestPath(1,3,FastestPath), ExpectedTime);
+    EXPECT_EQ(FastestPath, ExpectedFastestPath);
+}
+
+TEST(CSVOSMTransporationPlanner, PathDescriptionFailureCases){
+    auto InStreamOSM = std::make_shared<CStringDataSource>( "<?xml version='1.0' encoding='UTF-8'?>"
+                                                            "<osm version=\"0.6\" generator=\"osmconvert 0.8.5\">"
+                                                            "<node id=\"1\" lat=\"38.5\" lon=\"-121.7\"/>"
+                                                            "</osm>");
+    auto InStreamStops = std::make_shared<CStringDataSource>("stop_id,node_id");
+    auto InStreamRoutes = std::make_shared<CStringDataSource>("route,stop_id");
+    auto XMLReader = std::make_shared<CXMLReader>(InStreamOSM);
+    auto CSVReaderStops = std::make_shared<CDSVReader>(InStreamStops,',');
+    auto CSVReaderRoutes = std::make_shared<CDSVReader>(InStreamRoutes,',');
+    auto StreetMap = std::make_shared<COpenStreetMap>(XMLReader);
+    auto BusSystem = std::make_shared<CCSVBusSystem>(CSVReaderStops, CSVReaderRoutes);
+    auto Config = std::make_shared<STransportationPlannerConfig>(StreetMap,BusSystem);
+    CDijkstraTransportationPlanner Planner(Config);
+
+    std::vector<std::string> Description;
+    std::vector<CTransportationPlanner::TTripStep> EmptyPath;
+    EXPECT_FALSE(Planner.GetPathDescription(EmptyPath, Description));
+
+    std::vector<CTransportationPlanner::TTripStep> BadNodePath = {{CTransportationPlanner::ETransportationMode::Walk,99}};
+    EXPECT_FALSE(Planner.GetPathDescription(BadNodePath, Description));
+}

@@ -50,6 +50,8 @@ TEST(CSVBusSystemIndexer, StopTest){
     ASSERT_TRUE(bool(Stop2Index));
     EXPECT_EQ(Stop2Index->ID(),2);
     EXPECT_EQ(Stop2Index->NodeID(),102);
+    EXPECT_EQ(BusSystemIndexer.SortedStopByIndex(2), nullptr);
+    EXPECT_EQ(BusSystemIndexer.StopByNodeID(999), nullptr);
 }
 
 TEST(CSVBusSystemIndexer, RouteTest){
@@ -89,5 +91,9 @@ TEST(CSVBusSystemIndexer, RouteTest){
     EXPECT_EQ(Routes.size(),2);
     EXPECT_TRUE(Routes.find(Route1Index) != Routes.end());
     EXPECT_TRUE(Routes.find(Route2Index) != Routes.end());
-
+    EXPECT_EQ(BusSystemIndexer.SortedRouteByIndex(2), nullptr);
+    EXPECT_TRUE(BusSystemIndexer.RouteBetweenNodeIDs(101,102));
+    EXPECT_FALSE(BusSystemIndexer.RouteBetweenNodeIDs(102,102));
+    EXPECT_FALSE(BusSystemIndexer.RoutesByNodeIDs(102,102,Routes));
+    EXPECT_TRUE(Routes.empty());
 }

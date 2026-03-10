@@ -45,11 +45,15 @@ struct CDijkstraTransportationPlanner::SImplementation{
     std::shared_ptr<CStreetMap> DStreetMap;
     std::shared_ptr<CBusSystem> DBusSystem;
     std::vector<std::shared_ptr<CStreetMap::SNode>> DSortedNodes;
+    std::vector<TNodeID> DNodeIDs;
     std::unordered_map<TNodeID,std::shared_ptr<CStreetMap::SNode>> DNodeByID;
+    std::unordered_map<TNodeID,std::size_t> DNodeIndex;
     std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DShortEdges;
     std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DWalkEdges;
     std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DBikeEdges;
     std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DBusEdges;
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DWalkBusEdges;
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DWalkBikeEdges;
     std::unordered_map<std::pair<TNodeID,TNodeID>,SWayInfo,SPairHash> DWayInfo;
     std::unordered_map<TNodeID,TStopID> DStopByNode;
     std::unordered_map<std::pair<TNodeID,TNodeID>,std::unordered_set<std::string>,SPairHash> DRouteNames;
@@ -82,6 +86,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
     }
 
     void AddEdge(std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID a, TNodeID b, double dist, double time, TMode mode){
+        // just putting an edge in the graph map
         SDirectedEdge e;
         e.DDestination = b;
         e.DDistanceMiles = dist;
@@ -94,6 +99,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
         if(!DStreetMap){
             return;
         }
+        // grabbing speeds from config and then building road edges
         double ws = DConfig ? DConfig->WalkSpeed() : 3.0;
         double bs = DConfig ? DConfig->BikeSpeed() : 8.0;
         double ds = DConfig ? DConfig->DefaultSpeedLimit() : 25.0;
@@ -166,6 +172,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
         if(!DBusSystem){
             return;
         }
+        // bus edges are stop to stop using shortest road path
         double stopt = DConfig ? DConfig->BusStopTime() : 30.0;
         if(stopt < 0.0){
             stopt = 0.0;
@@ -219,39 +226,44 @@ struct CDijkstraTransportationPlanner::SImplementation{
     }
 
     bool FindPath(const std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID src, TNodeID dst, std::vector<TNodeID> &outnodes, std::vector<TMode> &outmodes, double &outcost) const{
+        // basic dijkstra on whatever graph map gets passed in
         outnodes.clear();
         outmodes.clear();
         outcost = CPathRouter::NoPathExists;
+        auto srcit = DNodeIndex.find(src);
+        auto dstit = DNodeIndex.find(dst);
         if(src == dst){
-            if(DNodeByID.find(src) == DNodeByID.end()){
+            if(srcit == DNodeIndex.end()){
                 return false;
             }
             outnodes.push_back(src);
             outcost = 0.0;
             return true;
         }
-        if(DNodeByID.find(src) == DNodeByID.end() || DNodeByID.find(dst) == DNodeByID.end()){
+        if(srcit == DNodeIndex.end() || dstit == DNodeIndex.end()){
             return false;
         }
 
         struct SState{
             double d;
-            TNodeID n;
+            std::size_t n;
             bool operator>(const SState &o) const{
-                return d > o.d;
+                if(d != o.d){
+                    return d > o.d;
+                }
+                return n > o.n;
             }
         };
 
-        std::unordered_map<TNodeID,double> dist;
-        std::unordered_map<TNodeID,TNodeID> prev;
-        std::unordered_map<TNodeID,TMode> pmode;
-        for(const auto &p : DNodeByID){
-            dist[p.first] = CPathRouter::NoPathExists;
-        }
-        dist[src] = 0.0;
+        std::vector<double> dist(DNodeIDs.size(), CPathRouter::NoPathExists);
+        std::vector<std::size_t> prev(DNodeIDs.size(), std::numeric_limits<std::size_t>::max());
+        std::vector<TMode> pmode(DNodeIDs.size(), TMode::Walk);
+        auto srcidx = srcit->second;
+        auto dstidx = dstit->second;
+        dist[srcidx] = 0.0;
 
         std::priority_queue<SState,std::vector<SState>,std::greater<SState>> pq;
-        pq.push({0.0,src});
+        pq.push({0.0,srcidx});
 
         while(!pq.empty()){
             auto cur = pq.top();
@@ -259,50 +271,59 @@ struct CDijkstraTransportationPlanner::SImplementation{
             if(cur.d != dist[cur.n]){
                 continue;
             }
-            if(cur.n == dst){
+            if(cur.n == dstidx){
                 break;
             }
-            auto it = m.find(cur.n);
+            auto it = m.find(DNodeIDs[cur.n]);
             if(it == m.end()){
                 continue;
             }
             for(const auto &e : it->second){
+                auto nextit = DNodeIndex.find(e.DDestination);
+                if(nextit == DNodeIndex.end()){
+                    continue;
+                }
+                auto nextidx = nextit->second;
                 double nd = cur.d + e.DTimeHours;
-                if(nd < dist[e.DDestination]){
-                    dist[e.DDestination] = nd;
-                    prev[e.DDestination] = cur.n;
-                    pmode[e.DDestination] = e.DMode;
-                    pq.push({nd,e.DDestination});
+                if((nd < dist[nextidx]) || ((std::fabs(nd - dist[nextidx]) < 1e-9) && (cur.n < prev[nextidx]))){
+                    dist[nextidx] = nd;
+                    prev[nextidx] = cur.n;
+                    pmode[nextidx] = e.DMode;
+                    pq.push({nd,nextidx});
                 }
             }
         }
 
-        if(dist[dst] == CPathRouter::NoPathExists){
+        if(dist[dstidx] == CPathRouter::NoPathExists){
             return false;
         }
 
-        std::vector<TNodeID> revnodes;
+        std::vector<std::size_t> revnodes;
         std::vector<TMode> revmodes;
-        TNodeID cur = dst;
+        std::size_t cur = dstidx;
         revnodes.push_back(cur);
-        while(cur != src){
-            auto pit = prev.find(cur);
-            if(pit == prev.end()){
+        while(cur != srcidx){
+            auto pit = prev[cur];
+            if(pit == std::numeric_limits<std::size_t>::max()){
                 return false;
             }
             revmodes.push_back(pmode[cur]);
-            cur = pit->second;
+            cur = pit;
             revnodes.push_back(cur);
         }
         std::reverse(revnodes.begin(), revnodes.end());
         std::reverse(revmodes.begin(), revmodes.end());
-        outnodes = std::move(revnodes);
+        outnodes.reserve(revnodes.size());
+        for(auto idx : revnodes){
+            outnodes.push_back(DNodeIDs[idx]);
+        }
         outmodes = std::move(revmodes);
-        outcost = dist[dst];
+        outcost = dist[dstidx];
         return true;
     }
 
     std::vector<CTransportationPlanner::TTripStep> BuildTrip(const std::vector<TNodeID> &nodes, const std::vector<TMode> &modes) const{
+        // turning node list into trip steps for planner output
         std::vector<CTransportationPlanner::TTripStep> out;
         if(nodes.empty()){
             return out;
@@ -403,7 +424,30 @@ struct CDijkstraTransportationPlanner::SImplementation{
         return best;
     }
 
+    static std::string DistanceString(double dist){
+        std::ostringstream out;
+        if(dist < 0.1){
+            out << static_cast<long long>(std::llround(dist * 5280.0)) << " ft";
+            return out.str();
+        }
+        if(dist < 1.0){
+            out << std::fixed << std::setprecision(2) << dist;
+        }
+        else{
+            out << std::fixed << std::setprecision(1) << dist;
+        }
+        auto s = out.str();
+        while(s.size() > 2 && s.back() == '0'){
+            s.pop_back();
+        }
+        if(!s.empty() && s.back() == '.'){
+            s.pop_back();
+        }
+        return s + " mi";
+    }
+
     bool BuildDescription(const std::vector<CTransportationPlanner::TTripStep> &path, std::vector<std::string> &desc) const{
+        // this turns the saved path into the printed directions
         desc.clear();
         if(path.empty()){
             return false;
@@ -475,7 +519,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
                 }
             }
             std::ostringstream out;
-            out << ModeName(mode) << " " << dir << " " << word << " " << target << " for " << std::fixed << std::setprecision(1) << dist << " mi";
+            out << ModeName(mode) << " " << dir << " " << word << " " << target << " for " << DistanceString(dist);
             desc.push_back(out.str());
             i = j;
         }
@@ -498,11 +542,15 @@ struct CDijkstraTransportationPlanner::SImplementation{
                 if(Node){
                     DSortedNodes.push_back(Node);
                     DNodeByID[Node->ID()] = Node;
+                    DNodeIDs.push_back(Node->ID());
                 }
             }
             std::sort(DSortedNodes.begin(), DSortedNodes.end(), [](const auto &Left, const auto &Right){
                 return Left->ID() < Right->ID();
             });
+            for(std::size_t i = 0; i < DNodeIDs.size(); i++){
+                DNodeIndex[DNodeIDs[i]] = i;
+            }
         }
         if(DBusSystem){
             for(std::size_t i = 0; i < DBusSystem->StopCount(); i++){
@@ -514,6 +562,8 @@ struct CDijkstraTransportationPlanner::SImplementation{
         }
         BuildRoadEdges();
         BuildBusEdges();
+        DWalkBusEdges = Merge(DWalkEdges, DBusEdges);
+        DWalkBikeEdges = Merge(DWalkEdges, DBikeEdges);
     }
 
     std::size_t NodeCount() const noexcept{
@@ -554,18 +604,15 @@ double CDijkstraTransportationPlanner::FindShortestPath(TNodeID src, TNodeID des
 
 double CDijkstraTransportationPlanner::FindFastestPath(TNodeID src, TNodeID dest, std::vector<TTripStep> &path){
     path.clear();
-    auto g1 = DImplementation->Merge(DImplementation->DWalkEdges, DImplementation->DBusEdges);
-    auto g2 = DImplementation->Merge(DImplementation->DWalkEdges, DImplementation->DBikeEdges);
-
     std::vector<TNodeID> n1;
     std::vector<ETransportationMode> m1;
     double c1 = CPathRouter::NoPathExists;
-    bool ok1 = DImplementation->FindPath(g1, src, dest, n1, m1, c1);
+    bool ok1 = DImplementation->FindPath(DImplementation->DWalkBusEdges, src, dest, n1, m1, c1);
 
     std::vector<TNodeID> n2;
     std::vector<ETransportationMode> m2;
     double c2 = CPathRouter::NoPathExists;
-    bool ok2 = DImplementation->FindPath(g2, src, dest, n2, m2, c2);
+    bool ok2 = DImplementation->FindPath(DImplementation->DWalkBikeEdges, src, dest, n2, m2, c2);
 
     if(!ok1 && !ok2){
         return CPathRouter::NoPathExists;

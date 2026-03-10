@@ -85,6 +85,7 @@ struct CTransportationPlannerCommandLine::SImplementation{
     }
 
     bool ReadLine(std::string &line){
+        // reading one command line at a time
         line.clear();
         while(true){
             char c;
@@ -101,6 +102,7 @@ struct CTransportationPlannerCommandLine::SImplementation{
     }
 
     void SaveShortest(const std::vector<CTransportationPlanner::TNodeID> &nodes, CTransportationPlanner::TNodeID s, CTransportationPlanner::TNodeID d, double h){
+        // saving the last shortest path so print/save can use it later
         lastpath.clear();
         for(auto n : nodes){
             lastpath.push_back(std::make_pair(CTransportationPlanner::ETransportationMode::Walk, n));
@@ -112,6 +114,7 @@ struct CTransportationPlannerCommandLine::SImplementation{
     }
 
     void SaveFastest(const std::vector<CTransportationPlanner::TTripStep> &nodes, CTransportationPlanner::TNodeID s, CTransportationPlanner::TNodeID d, double h){
+        // same idea but for fastest path
         lastpath = nodes;
         lastsrc = s;
         lastdst = d;
@@ -123,6 +126,7 @@ struct CTransportationPlannerCommandLine::SImplementation{
         if(!src || !out || !err || !planner){
             return false;
         }
+        // main command loop for transplanner
         while(true){
             Put(out, "> ");
             std::string line;
