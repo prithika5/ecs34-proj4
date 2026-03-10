@@ -120,6 +120,9 @@ struct CTransportationPlannerCommandLine::SImplementation{
     }
 
     bool Process(){
+        if(!src || !out || !err || !planner){
+            return false;
+        }
         while(true){
             Put(out, "> ");
             std::string line;
@@ -219,6 +222,10 @@ struct CTransportationPlannerCommandLine::SImplementation{
             }
             else if(cmd == "save"){
                 if(!haspath){
+                    Put(err, "No valid path to save, see help.\n");
+                    continue;
+                }
+                if(!factory){
                     Put(err, "No valid path to save, see help.\n");
                     continue;
                 }
