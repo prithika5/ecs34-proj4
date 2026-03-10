@@ -53,6 +53,114 @@ struct CDijkstraTransportationPlanner::SImplementation{
     std::unordered_map<TNodeID,TStopID> DStopByNode;
     std::unordered_map<std::pair<TNodeID,TNodeID>,std::unordered_set<std::string>,SPairHash> DRouteNames;
 
+    static bool IsOneWay(const std::string &v){
+        auto s = StringUtils::Lower(StringUtils::Strip(v));
+        return s == "yes" || s == "true" || s == "1";
+    }
+
+    static bool BikeAllowed(const std::string &v){
+        auto s = StringUtils::Lower(StringUtils::Strip(v));
+        return s != "no";
+    }
+
+    static double ParseSpeed(const std::string &v, double d){
+        std::string s = StringUtils::Lower(StringUtils::Strip(v));
+        std::string n;
+        for(char c : s){
+            if((c >= '0' && c <= '9') || c == '.'){
+                n.push_back(c);
+            }
+            else if(!n.empty()){
+                break;
+            }
+        }
+        if(n.empty()){
+            return d;
+        }
+        return std::stod(n);
+    }
+
+    void AddEdge(std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID a, TNodeID b, double dist, double time, TMode mode){
+        SDirectedEdge e;
+        e.DDestination = b;
+        e.DDistanceMiles = dist;
+        e.DTimeHours = time;
+        e.DMode = mode;
+        m[a].push_back(e);
+    }
+
+    void BuildRoadEdges(){
+        if(!DStreetMap){
+            return;
+        }
+        double ws = DConfig ? DConfig->WalkSpeed() : 3.0;
+        double bs = DConfig ? DConfig->BikeSpeed() : 8.0;
+        double ds = DConfig ? DConfig->DefaultSpeedLimit() : 25.0;
+        if(ws <= 0.0){
+            ws = 3.0;
+        }
+        if(bs <= 0.0){
+            bs = 8.0;
+        }
+        if(ds <= 0.0){
+            ds = 25.0;
+        }
+        for(std::size_t i = 0; i < DStreetMap->WayCount(); i++){
+            auto way = DStreetMap->WayByIndex(i);
+            if(!way){
+                continue;
+            }
+            bool oneway = way->HasAttribute("oneway") && IsOneWay(way->GetAttribute("oneway"));
+            bool bikeok = !way->HasAttribute("bicycle") || BikeAllowed(way->GetAttribute("bicycle"));
+            std::string name;
+            if(way->HasAttribute("name")){
+                name = way->GetAttribute("name");
+            }
+            double speed = ds;
+            if(way->HasAttribute("maxspeed")){
+                speed = ParseSpeed(way->GetAttribute("maxspeed"), ds);
+            }
+            if(speed <= 0.0){
+                speed = ds;
+            }
+
+            for(std::size_t j = 1; j < way->NodeCount(); j++){
+                TNodeID a = way->GetNodeID(j - 1);
+                TNodeID b = way->GetNodeID(j);
+                auto na = DStreetMap->NodeByID(a);
+                auto nb = DStreetMap->NodeByID(b);
+                if(!na || !nb){
+                    continue;
+                }
+                double dist = SGeographicUtils::HaversineDistanceInMiles(na->Location(), nb->Location());
+                if(dist < 0.0){
+                    continue;
+                }
+                SWayInfo w;
+                w.DDistanceMiles = dist;
+                w.DSpeed = speed;
+                w.DName = name;
+                DWayInfo[std::make_pair(a,b)] = w;
+                DWayInfo[std::make_pair(b,a)] = w;
+                AddEdge(DWalkEdges, a, b, dist, dist / ws, TMode::Walk);
+                AddEdge(DWalkEdges, b, a, dist, dist / ws, TMode::Walk);
+                if(oneway){
+                    AddEdge(DShortEdges, a, b, dist, dist, TMode::Walk);
+                }
+                else{
+                    AddEdge(DShortEdges, a, b, dist, dist, TMode::Walk);
+                    AddEdge(DShortEdges, b, a, dist, dist, TMode::Walk);
+                }
+                if(bikeok){
+                    AddEdge(DBikeEdges, a, b, dist, dist / bs, TMode::Bike);
+                    if(!oneway){
+                        AddEdge(DBikeEdges, b, a, dist, dist / bs, TMode::Bike);
+                    }
+                }
+            }
+        }
+    }
+
     SImplementation(std::shared_ptr<SConfiguration> config)
         : DConfig(std::move(config)){
         if(DConfig){
@@ -81,6 +189,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
                 }
             }
         }
+        BuildRoadEdges();
     }
 
     std::size_t NodeCount() const noexcept{
