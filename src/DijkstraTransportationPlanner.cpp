@@ -18,17 +18,40 @@
 
 struct CDijkstraTransportationPlanner::SImplementation{
     using TNodeID = CTransportationPlanner::TNodeID;
+    using TStopID = CBusSystem::TStopID;
+    using TMode = CTransportationPlanner::ETransportationMode;
 
     struct SDirectedEdge{
         TNodeID DDestination = CStreetMap::InvalidNodeID;
         double DDistanceMiles = 0.0;
         double DTimeHours = 0.0;
+        TMode DMode = TMode::Walk;
+    };
+
+    struct SWayInfo{
+        double DDistanceMiles = 0.0;
+        double DSpeed = 0.0;
+        std::string DName;
+    };
+
+    struct SPairHash{
+        std::size_t operator()(const std::pair<TNodeID,TNodeID> &v) const noexcept{
+            return static_cast<std::size_t>(v.first ^ (v.second << 1));
+        }
     };
 
     std::shared_ptr<SConfiguration> DConfig;
     std::shared_ptr<CStreetMap> DStreetMap;
     std::shared_ptr<CBusSystem> DBusSystem;
     std::vector<std::shared_ptr<CStreetMap::SNode>> DSortedNodes;
+    std::unordered_map<TNodeID,std::shared_ptr<CStreetMap::SNode>> DNodeByID;
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DShortEdges;
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DWalkEdges;
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DBikeEdges;
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DBusEdges;
+    std::unordered_map<std::pair<TNodeID,TNodeID>,SWayInfo,SPairHash> DWayInfo;
+    std::unordered_map<TNodeID,TStopID> DStopByNode;
+    std::unordered_map<std::pair<TNodeID,TNodeID>,std::unordered_set<std::string>,SPairHash> DRouteNames;
 
     SImplementation(std::shared_ptr<SConfiguration> config)
         : DConfig(std::move(config)){
@@ -43,11 +66,20 @@ struct CDijkstraTransportationPlanner::SImplementation{
                 auto Node = DStreetMap->NodeByIndex(Index);
                 if(Node){
                     DSortedNodes.push_back(Node);
+                    DNodeByID[Node->ID()] = Node;
                 }
             }
             std::sort(DSortedNodes.begin(), DSortedNodes.end(), [](const auto &Left, const auto &Right){
                 return Left->ID() < Right->ID();
             });
+        }
+        if(DBusSystem){
+            for(std::size_t i = 0; i < DBusSystem->StopCount(); i++){
+                auto stop = DBusSystem->StopByIndex(i);
+                if(stop){
+                    DStopByNode[stop->NodeID()] = stop->ID();
+                }
+            }
         }
     }
 
