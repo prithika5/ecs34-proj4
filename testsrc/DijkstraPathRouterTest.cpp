@@ -61,3 +61,21 @@ TEST(DijkstraPathRouter, NegativeWeight){
 
     EXPECT_FALSE(PathRouter.AddEdge(VertexA, VertexB, -1.0));
 }
+
+
+//Only added one-way edges, forgot about the reverse edges
+
+TEST(DijkstraPathRouter, BidirectionalEdge){
+    CDijkstraPathRouter PathRouter;
+
+    auto VertexA = PathRouter.AddVertex(std::string("A"));
+    auto VertexB = PathRouter.AddVertex(std::string("B"));
+
+    EXPECT_TRUE(PathRouter.AddEdge(VertexA, VertexB, 3.0, true));
+
+    std::vector<CPathRouter::TVertexID> Path;
+    EXPECT_EQ(PathRouter.FindShortestPath(VertexB, VertexA, Path), 3.0);
+
+    std::vector<CPathRouter::TVertexID> ExpectedPath{VertexB, VertexA};
+    EXPECT_EQ(Path, ExpectedPath);
+}
