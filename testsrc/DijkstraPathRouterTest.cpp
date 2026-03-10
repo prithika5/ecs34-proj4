@@ -37,3 +37,17 @@ TEST(DijkstraPathRouter, ShortestPath){
     EXPECT_EQ(Path,ExpectedPath);
     
 }
+
+
+//invalid vertex
+
+TEST(DijkstraPathRouter, InvalidEdge){
+    CDijkstraPathRouter PathRouter;
+
+    auto VertexA = PathRouter.AddVertex(std::string("A"));
+    auto VertexB = PathRouter.AddVertex(std::string("B"));
+
+    EXPECT_FALSE(PathRouter.AddEdge(VertexA, 10, 1.0));
+    EXPECT_FALSE(PathRouter.AddEdge(10, VertexB, 1.0));
+}
+

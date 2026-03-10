@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+#include <unordered_set>
 
 struct CBusSystemIndexer::SImplementation{
     std::shared_ptr<CBusSystem> DBusSystem;
@@ -67,29 +68,40 @@ struct CBusSystemIndexer::SImplementation{
     }
 
     std::shared_ptr<SStop> SortedStopByIndex(std::size_t index) const noexcept{
-        return DSortedStopsByIndex[index]; // do a check 
-    }
-
-    std::shared_ptr<SRoute> SortedRouteByIndex(std::size_t index) const noexcept{
-        return DSortedRoutesByIndex[index]; // do a check
-    }
-
-    std::shared_ptr<SStop> StopByNodeID(TNodeID id) const noexcept{
+    if(index >= DSortedStopsByIndex.size()){
         return nullptr;
     }
+    return DSortedStopsByIndex[index];
+}
 
-    bool RoutesByNodeIDs(TNodeID src, TNodeID dest, std::unordered_set<std::shared_ptr<SRoute> > &routes) const noexcept{
-        auto Search = DRoutesByNodeIDs.find(std::make_pair(src,dest));
-        if(Search != DRoutesByNodeIDs.end()){
-            routes = Search->second;
-            return true;
-        }
-        return false;
+   std::shared_ptr<SRoute> SortedRouteByIndex(std::size_t index) const noexcept{
+    if(index >= DSortedRoutesByIndex.size()){
+        return nullptr;
     }
+    return DSortedRoutesByIndex[index];
+}
 
-    bool RouteBetweenNodeIDs(TNodeID src, TNodeID dest) const noexcept{
-        return false;
+    std::shared_ptr<SStop> StopByNodeID(TNodeID id) const noexcept{
+    auto Search = DStopsByNodeID.find(id);
+    if(Search == DStopsByNodeID.end()){
+        return nullptr;
     }
+    return Search->second;
+}
+
+   bool RoutesByNodeIDs(TNodeID src, TNodeID dest, std::unordered_set<std::shared_ptr<SRoute>> &routes) const noexcept{
+    routes.clear();
+    auto Search = DRoutesByNodeIDs.find(std::make_pair(src,dest));
+    if(Search != DRoutesByNodeIDs.end()){
+        routes = Search->second;
+        return true;
+    }
+    return false;
+}
+
+   bool RouteBetweenNodeIDs(TNodeID src, TNodeID dest) const noexcept{
+    return DRoutesByNodeIDs.find(std::make_pair(src,dest)) != DRoutesByNodeIDs.end();
+}
 
 };
 
