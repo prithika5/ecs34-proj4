@@ -302,6 +302,32 @@ struct CDijkstraTransportationPlanner::SImplementation{
         return true;
     }
 
+    std::vector<CTransportationPlanner::TTripStep> BuildTrip(const std::vector<TNodeID> &nodes, const std::vector<TMode> &modes) const{
+        std::vector<CTransportationPlanner::TTripStep> out;
+        if(nodes.empty()){
+            return out;
+        }
+        if(nodes.size() == 1){
+            out.push_back(std::make_pair(TMode::Walk, nodes[0]));
+            return out;
+        }
+        TMode first = modes.empty() ? TMode::Walk : modes[0];
+        if(first == TMode::Bus){
+            out.push_back(std::make_pair(TMode::Walk, nodes[0]));
+        }
+        else{
+            out.push_back(std::make_pair(first, nodes[0]));
+        }
+        for(std::size_t i = 1; i < nodes.size(); i++){
+            TMode m = TMode::Walk;
+            if(i - 1 < modes.size()){
+                m = modes[i - 1];
+            }
+            out.push_back(std::make_pair(m, nodes[i]));
+        }
+        return out;
+    }
+
     SImplementation(std::shared_ptr<SConfiguration> config)
         : DConfig(std::move(config)){
         if(DConfig){
