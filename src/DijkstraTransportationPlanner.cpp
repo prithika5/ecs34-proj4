@@ -15,6 +15,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 struct CDijkstraTransportationPlanner::SImplementation{
     using TNodeID = CTransportationPlanner::TNodeID;
@@ -159,6 +160,90 @@ struct CDijkstraTransportationPlanner::SImplementation{
                 }
             }
         }
+    }
+
+    bool FindPath(const std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID src, TNodeID dst, std::vector<TNodeID> &outnodes, std::vector<TMode> &outmodes, double &outcost) const{
+        outnodes.clear();
+        outmodes.clear();
+        outcost = CPathRouter::NoPathExists;
+        if(src == dst){
+            if(DNodeByID.find(src) == DNodeByID.end()){
+                return false;
+            }
+            outnodes.push_back(src);
+            outcost = 0.0;
+            return true;
+        }
+        if(DNodeByID.find(src) == DNodeByID.end() || DNodeByID.find(dst) == DNodeByID.end()){
+            return false;
+        }
+
+        struct SState{
+            double d;
+            TNodeID n;
+            bool operator>(const SState &o) const{
+                return d > o.d;
+            }
+        };
+
+        std::unordered_map<TNodeID,double> dist;
+        std::unordered_map<TNodeID,TNodeID> prev;
+        std::unordered_map<TNodeID,TMode> pmode;
+        for(const auto &p : DNodeByID){
+            dist[p.first] = CPathRouter::NoPathExists;
+        }
+        dist[src] = 0.0;
+
+        std::priority_queue<SState,std::vector<SState>,std::greater<SState>> pq;
+        pq.push({0.0,src});
+
+        while(!pq.empty()){
+            auto cur = pq.top();
+            pq.pop();
+            if(cur.d != dist[cur.n]){
+                continue;
+            }
+            if(cur.n == dst){
+                break;
+            }
+            auto it = m.find(cur.n);
+            if(it == m.end()){
+                continue;
+            }
+            for(const auto &e : it->second){
+                double nd = cur.d + e.DTimeHours;
+                if(nd < dist[e.DDestination]){
+                    dist[e.DDestination] = nd;
+                    prev[e.DDestination] = cur.n;
+                    pmode[e.DDestination] = e.DMode;
+                    pq.push({nd,e.DDestination});
+                }
+            }
+        }
+
+        if(dist[dst] == CPathRouter::NoPathExists){
+            return false;
+        }
+
+        std::vector<TNodeID> revnodes;
+        std::vector<TMode> revmodes;
+        TNodeID cur = dst;
+        revnodes.push_back(cur);
+        while(cur != src){
+            auto pit = prev.find(cur);
+            if(pit == prev.end()){
+                return false;
+            }
+            revmodes.push_back(pmode[cur]);
+            cur = pit->second;
+            revnodes.push_back(cur);
+        }
+        std::reverse(revnodes.begin(), revnodes.end());
+        std::reverse(revmodes.begin(), revmodes.end());
+        outnodes = std::move(revnodes);
+        outmodes = std::move(revmodes);
+        outcost = dist[dst];
+        return true;
     }
 
     SImplementation(std::shared_ptr<SConfiguration> config)
