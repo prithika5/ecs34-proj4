@@ -1,0 +1,21 @@
+# Build directories
+bin/
+obj/
+testbin/
+testobj/
+htmlcov/
+
+# Coverage files
+*.gcda
+*.gcno
+*.gcov
+#*
+
+# Object files
+*.o
+
+# Archives
+*.tgz
+
+# Mac junk
+.DS_Store

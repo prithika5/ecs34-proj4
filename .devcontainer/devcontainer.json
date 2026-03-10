@@ -1,0 +1,18 @@
+// For format details, see https://aka.ms/devcontainer.json
+{
+	"name": "C++ Project 2",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools"
+			]
+		}
+	}
+
+	// No postCreateCommand on purpose.
+	// We'll run make / tests manually to avoid failures on container startup.
+}
