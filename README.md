@@ -179,115 +179,410 @@ gencoverage:
 	@LC_ALL=C lcov --summary $(TESTCOVER_DIR)/coverage.info
 ```
 
-### Student 2 (Qi Gao) – CSVBusSystem Implementation Prompts
+### Student 2 (Qi Gao) – BusSystemIndexer and DijkstraPathRouter Implementation Prompts
 
-#### Prompt 1: Grouping Route Rows Into A Single Route Object
+#### Prompt 1: Sorting Stops And Routes For Indexed Access
 
 **Question:**
-routes.csv has multiple rows for the same route name (e.g., A,1 A,2 A,3). How do I combine those into one Route object?
+How do I support `SortedStopByIndex()` and `SortedRouteByIndex()` efficiently?
 
 **Response:**
-- Read the header first to locate the route and stop_id columns.
-- Then read each row and use an unordered_map<string, shared_ptr<SRoute>> to group rows by route name.
+- Copy all stops into a vector and sort them by stop ID.
+- Copy all routes into a vector and sort them by route name.
+- This makes indexed access easy after construction.
 
-If the route name appears for the first time:
-- Create a new SRoute
-- Store its name
-- Push it into DRoutesByIndex
-- Add it to DRoutesByName
-
-- Then, for every row, append the stop ID into that route's DStopIDs vector.
+If the index is invalid:
+- Return `nullptr`
+- Do not access the vector directly
 
 **Implementation:**
 
 ```cpp
-while(ReadRow(row)){
-    name = row[routeCol];
-    id = stoull(row[stopCol]);
+for(size_t Index = 0; Index < DBusSystem->StopCount(); Index++){
+    auto Stop = DBusSystem->StopByIndex(Index);
+    DSortedStopsByIndex.push_back(Stop);
+}
 
-    if(route not yet created)
-        create new route
+std::sort(DSortedStopsByIndex.begin(), DSortedStopsByIndex.end(),
+          [](std::shared_ptr<SStop> l, std::shared_ptr<SStop> r) -> bool{
+              return l->ID() < r->ID();
+          });
 
-    route->DStopIDs.push_back(id);
+for(size_t Index = 0; Index < DBusSystem->RouteCount(); Index++){
+    auto Route = DBusSystem->RouteByIndex(Index);
+    DSortedRoutesByIndex.push_back(Route);
+}
+
+std::sort(DSortedRoutesByIndex.begin(), DSortedRoutesByIndex.end(),
+          [](std::shared_ptr<SRoute> l, std::shared_ptr<SRoute> r) -> bool{
+              return l->Name() < r->Name();
+          });
+```
+
+#### Prompt 2: Looking Up Stops By Node ID
+
+**Question:**
+How do I implement `StopByNodeID()` efficiently?
+
+**Response:**
+- Use an `unordered_map<TNodeID, shared_ptr<SStop>>`.
+- The key is the node ID.
+- The value is the stop pointer.
+
+During construction:
+- Insert every stop into `DStopsByNodeID`
+- Then `StopByNodeID()` can use `.find()` directly
+
+If the node ID does not exist:
+- Return `nullptr`
+
+**Implementation:**
+
+```cpp
+for(size_t Index = 0; Index < DBusSystem->StopCount(); Index++){
+    auto Stop = DBusSystem->StopByIndex(Index);
+    DStopsByNodeID[Stop->NodeID()] = Stop;
 }
 ```
 
-#### Prompt 2: Handling Missing CSV Headers Safely
+```cpp
+auto Search = DStopsByNodeID.find(id);
+if(Search == DStopsByNodeID.end()){
+    return nullptr;
+}
+return Search->second;
+```
+
+#### Prompt 3: Detecting Routes Between Two Node IDs
 
 **Question:**
-What should I do if required headers (like stop_id, node_id, or route) are missing?
+How do I check whether there is a route segment between two node IDs?
 
 **Response:**
-- After reading the header row, scan for required column names.
-- If any required column is missing, return false immediately instead of continuing to parse.
-- This prevents invalid memory access and ensures construction fails safely.
+- Walk through every route.
+- For each consecutive pair of stops, convert the stop IDs into node IDs.
+- Store the route using the pair `(srcNodeID, destNodeID)` as the key.
+
+This allows:
+- `RoutesByNodeIDs()` to return the matching route set
+- `RouteBetweenNodeIDs()` to quickly check if at least one route exists
 
 **Implementation:**
 
-- ReadStops() checks for stop_id and node_id.
-- ReadRoutes() checks for route and stop_id.
-- If any column is missing, the function returns false.
+```cpp
+for(auto Route: DSortedRoutesByIndex){
+    for(size_t Index = 1; Index < Route->StopCount(); Index++){
+        auto Previous = Route->GetStopID(Index-1);
+        auto Current = Route->GetStopID(Index);
+        auto FirstNodeID = DBusSystem->StopByID(Previous)->NodeID();
+        auto SecondNodeID = DBusSystem->StopByID(Current)->NodeID();
+        auto Key = std::make_pair(FirstNodeID,SecondNodeID);
 
-#### Prompt 3: Handling Invalid Index And Missing IDs
+        auto Search = DRoutesByNodeIDs.find(Key);
+        if(Search == DRoutesByNodeIDs.end()){
+            DRoutesByNodeIDs[Key] = {Route};
+        }
+        else{
+            Search->second.insert(Route);
+        }
+    }
+}
+```
+
+#### Prompt 4: Handling Invalid Indexes Safely
 
 **Question:**
-What should functions return when an index is out of bounds or an ID does not exist?
+What should happen if `SortedStopByIndex()` or `SortedRouteByIndex()` gets an invalid index?
 
 **Response:**
-To avoid crashes:
-- StopByIndex() and StopByID() return nullptr if not found.
-- GetStopID(index) returns CBusSystem::InvalidStopID if the index is invalid.
-
-This keeps behavior consistent and safe.
+- Check the index before using it.
+- If the index is out of range, return `nullptr`.
+- This avoids invalid vector access and prevents crashes.
 
 **Implementation:**
 
-- Used bounds checks for vectors and .find() for maps.
-- Returned nullptr or InvalidStopID when appropriate.
+```cpp
+if(index >= DSortedStopsByIndex.size()){
+    return nullptr;
+}
+return DSortedStopsByIndex[index];
+```
 
-#### Prompt 4: Why Use Both Vector And Unordered_Map?
+```cpp
+if(index >= DSortedRoutesByIndex.size()){
+    return nullptr;
+}
+return DSortedRoutesByIndex[index];
+```
+
+#### Prompt 5: Representing The Graph In DijkstraPathRouter
 
 **Question:**
-Why store both a vector and a map for stops and routes? Isn't one enough?
+How do I store the graph for Dijkstra's algorithm?
 
 **Response:**
-Each data structure serves a different purpose:
-- vector preserves insertion order and allows fast access by index.
-- unordered_map allows fast lookup by ID or name.
+- Store all vertices in a vector.
+- Each vertex stores a tag and a list of outgoing edges.
+- Each edge stores the weight and the destination vertex ID.
 
-Using both ensures:
-- StopByIndex() is efficient
-- StopByID() is efficient
-- Order remains consistent
+This makes path search easier because:
+- neighbors are easy to iterate through
+- the destination ID is already available
 
 **Implementation:**
 
-Stops:
-- DStopsByIndex
-- DStopsByID
+```cpp
+struct SVertex;
+using TEdge = std::pair<double,TVertexID>;
 
-Routes:
-- DRoutesByIndex
-- DRoutesByName
+struct SVertex{
+    std::vector<TEdge> DEdges;
+    std::any DTag;
+};
 
-Both structures are populated during parsing.
+std::vector<std::shared_ptr<SVertex>> DVertices;
+```
 
-#### Prompt 5: Debugging When Git Does Not Detect File Changes
+#### Prompt 6: Validating Edges Before Adding Them
 
 **Question:**
-Why did git status show no changes even after modifying files?
+What checks should `AddEdge()` perform?
 
 **Response:**
-The issue was editing the wrong directory. There were two copies:
-- /workspace/ecs34-project3/ (actual git repo)
-- /workspace/ (outer directory, not tracked)
+- Verify that `src` is a valid vertex ID.
+- Verify that `dest` is a valid vertex ID.
+- Reject the edge if the weight is negative.
 
-Changes made outside the repository were not tracked by git.
+If `bidir` is true:
+- Add the reverse edge too
+
+If any input is invalid:
+- Return `false`
 
 **Implementation:**
 
-Used:
-```bash
-pwd
-realpath filename
+```cpp
+if(src >= DVertices.size() || dest >= DVertices.size() || weight < 0){
+    return false;
+}
+
+DVertices[src]->DEdges.push_back(std::make_pair(weight,dest));
+
+if(bidir){
+    DVertices[dest]->DEdges.push_back(std::make_pair(weight,src));
+}
+
+return true;
+```
+#### Prompt 7: Implementing Dijkstra's Algorithm
+
+**Question:**
+How did I implement `FindShortestPath()`?
+
+**Response:**
+- Use three vectors:
+  - `w` for shortest known distances
+  - `p` for previous vertex
+  - `v` for visited flags
+- Initialize every distance to infinity.
+- Set the source distance to `0`.
+- Repeatedly choose the unvisited vertex with the smallest distance.
+- Relax all outgoing edges from that vertex.
+
+Stop when:
+- there are no more reachable vertices
+- or the destination has been reached
+
+**Implementation:**
+
+```cpp
+std::vector<double> w;
+w.resize(DVertices.size(),std::numeric_limits<double>::max());
+
+std::vector<TVertexID> p;
+p.resize(DVertices.size(),std::numeric_limits<TVertexID>::max());
+
+std::vector<bool> v;
+v.resize(DVertices.size(),false);
+
+w[src] = 0;
+
+for(std::size_t i = 0; i < DVertices.size(); i++){
+    TVertexID c = std::numeric_limits<TVertexID>::max();
+    double m = std::numeric_limits<double>::max();
+
+    for(TVertexID j = 0; j < DVertices.size(); j++){
+        if(!v[j] && w[j] < m){
+            m = w[j];
+            c = j;
+        }
+    }
+
+    if(c == std::numeric_limits<TVertexID>::max()){
+        break;
+    }
+
+    v[c] = true;
+
+    if(c == dest){
+        break;
+    }
+
+    for(std::size_t j = 0; j < DVertices[c]->DEdges.size(); j++){
+        double ew = DVertices[c]->DEdges[j].first;
+        TVertexID n = DVertices[c]->DEdges[j].second;
+
+        if(!v[n] && w[c] != std::numeric_limits<double>::max() && w[c] + ew < w[n]){
+            w[n] = w[c] + ew;
+            p[n] = c;
+        }
+    }
+}
+```
+
+#### Prompt 8: Reconstructing The Final Path
+
+**Question:**
+After Dijkstra finishes, how do I build the final path?
+
+**Response:**
+- First check whether the destination is reachable.
+- If not reachable, return `NoPathExists`.
+- Otherwise, start from `dest` and move backward using the previous array.
+- Store the vertices in reverse order first.
+- Then push them into `path` in forward order.
+
+If backward tracing fails:
+- Clear `path`
+- Return `NoPathExists`
+
+**Implementation:**
+
+```cpp
+if(w[dest] == std::numeric_limits<double>::max()){
+    return NoPathExists;
+}
+
+std::vector<TVertexID> r;
+TVertexID c = dest;
+
+while(c != src){
+    r.push_back(c);
+    c = p[c];
+
+    if(c == std::numeric_limits<TVertexID>::max()){
+        path.clear();
+        return NoPathExists;
+    }
+}
+
+r.push_back(src);
+
+for(std::size_t i = r.size(); i > 0; i--){
+    path.push_back(r[i-1]);
+}
+
+return w[dest];
+```
+
+#### Prompt 9: Testing Invalid Edge Input
+
+**Question:**
+How do I test that `AddEdge()` rejects invalid vertex IDs?
+
+**Response:**
+- Create valid vertices first.
+- Then try adding edges using invalid vertex IDs.
+- `AddEdge()` should return `false`.
+
+This verifies:
+- bounds checking works
+- invalid edges are not inserted
+
+**Implementation:**
+
+```cpp
+auto VertexA = PathRouter.AddVertex(std::string("A"));
+auto VertexB = PathRouter.AddVertex(std::string("B"));
+
+EXPECT_FALSE(PathRouter.AddEdge(VertexA, 10, 1.0));
+EXPECT_FALSE(PathRouter.AddEdge(10, VertexB, 1.0));
+```
+
+#### Prompt 10: Testing Negative Edge Weights
+
+**Question:**
+How do I test that `AddEdge()` rejects negative weights?
+
+**Response:**
+- Create two valid vertices.
+- Try adding an edge with a negative weight.
+- `AddEdge()` should return `false`.
+
+This verifies:
+- negative weights are rejected
+- the implementation matches Dijkstra's assumptions
+
+**Implementation:**
+
+```cpp
+auto VertexA = PathRouter.AddVertex(std::string("A"));
+auto VertexB = PathRouter.AddVertex(std::string("B"));
+
+EXPECT_FALSE(PathRouter.AddEdge(VertexA, VertexB, -1.0));
+```
+
+#### Prompt 11: Testing Bidirectional Edges
+
+**Question:**
+How do I test that `bidir = true` really adds both directions?
+
+**Response:**
+- Add one bidirectional edge from A to B.
+- Then search for a path from B back to A.
+- The path should exist and the distance should match the edge weight.
+
+This verifies:
+- reverse edge insertion works
+- bidirectional routing behaves correctly
+
+**Implementation:**
+
+```cpp
+EXPECT_TRUE(PathRouter.AddEdge(VertexA, VertexB, 3.0, true));
+
+std::vector<CPathRouter::TVertexID> Path;
+EXPECT_EQ(PathRouter.FindShortestPath(VertexB, VertexA, Path), 3.0);
+
+std::vector<CPathRouter::TVertexID> ExpectedPath{VertexB, VertexA};
+EXPECT_EQ(Path, ExpectedPath);
+```
+
+#### Prompt 12: Testing The No-Path Case
+
+**Question:**
+How do I test that `FindShortestPath()` correctly reports no path exists?
+
+**Response:**
+- Create a graph where one vertex is disconnected.
+- Try finding a path to the disconnected vertex.
+- The function should return `NoPathExists`.
+- The returned path should be empty.
+
+This verifies:
+- unreachable destinations are handled correctly
+- old path contents are not left behind
+
+**Implementation:**
+
+```cpp
+auto VertexA = PathRouter.AddVertex(std::string("A"));
+auto VertexB = PathRouter.AddVertex(std::string("B"));
+auto VertexC = PathRouter.AddVertex(std::string("C"));
+
+EXPECT_TRUE(PathRouter.AddEdge(VertexA, VertexB, 2.0));
+
+std::vector<CPathRouter::TVertexID> Path;
+EXPECT_EQ(PathRouter.FindShortestPath(VertexA, VertexC, Path), CDijkstraPathRouter::NoPathExists);
+EXPECT_TRUE(Path.empty());
 ```
