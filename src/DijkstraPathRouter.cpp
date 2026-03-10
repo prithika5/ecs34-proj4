@@ -1,4 +1,11 @@
 #include "DijkstraPathRouter.h"
+#include <vector>
+#include <memory>
+#include <utility>
+#include <any>
+#include <limits>
+
+
 struct CDijkstraPathRouter::SImplementation{
     struct SVertex;
     using TEdge = std::pair<double,TVertexID>;
@@ -88,11 +95,12 @@ struct CDijkstraPathRouter::SImplementation{
             break;
         }
 
+        v[c] = true;
+
         if(c == dest){
             break;
         }
 
-        v[c] = true;
 
         for(std::size_t j = 0; j < DVertices[c]->DEdges.size(); j++){
             double ew = DVertices[c]->DEdges[j].first;
@@ -105,8 +113,32 @@ struct CDijkstraPathRouter::SImplementation{
         }
     }
 
+    if(w[dest] == std::numeric_limits<double>::max()){
     return NoPathExists;
 }
+
+
+    std::vector<TVertexID> r;
+    TVertexID c = dest;
+
+    while(c != src){
+        r.push_back(c);
+        c = p[c];
+
+        if(c == std::numeric_limits<TVertexID>::max()){
+            path.clear();
+            return NoPathExists;
+    }
+}
+
+    r.push_back(src);
+
+    for(std::size_t i = r.size(); i > 0; i--){
+        path.push_back(r[i-1]);
+}
+
+    return w[dest];
+    }
 };
 
 CDijkstraPathRouter::CDijkstraPathRouter(){
