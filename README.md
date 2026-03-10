@@ -1,4 +1,4 @@
-# Project 3 README
+# Project 4 README
 
 ## Team Members
 - **Student 1:** Prithika Thilakarajan (923266507)
@@ -6,288 +6,177 @@
 
 ## Project Status
 
-All required classes were successfully implemented, including `CCSVBusSystem` and `COpenStreetMap`. The supporting inner structs `SStop`, `SRoute`, `SNode`, and `SWay` were also fully implemented according to the abstract interface specifications.
+All required Project 4 classes and programs were implemented, including `CBusSystemIndexer`, `CDijkstraPathRouter`, `CDijkstraTransportationPlanner`, `CTransportationPlannerCommandLine`, `transplanner`, and `speedtest`.
 
-All GoogleTest test suites compile and pass.
+The transportation planner supports shortest path, fastest path, saving paths, and printing trip descriptions. The `GetPathDescription()` extra credit portion was also implemented.
 
-The Makefile builds all required test executables, uses the C++17 standard, and automatically creates the `obj` and `bin` directories if they do not already exist. It runs the test executables in the required order and supports the `make clean` target to remove generated build files.
+The Makefile builds the required test executables, creates the needed build directories, runs the main test targets, and builds `transplanner` and `speedtest`.
 
-Code coverage was verified using `lcov` to ensure sufficient test coverage of the implementation.
+The dev container was updated so `gtest` and `gmock` are both available for the command-line tests.
 
 ## Known Issues
 
-There are no known functional issues. All required features were implemented and tested successfully.
+The core planner, command-line, router, and indexer tests pass in the current container setup.
+
+Speed-performance extra credit tuning against the provided optimized baseline was not completed. The `speedtest` program builds and runs, but no extra optimization pass was done beyond the functional implementation.
 
 ## References
 
 - OpenStreetMap XML Format: https://wiki.openstreetmap.org/wiki/OSM_XML
+- OpenStreetMap Map Features: https://wiki.openstreetmap.org/wiki/Map_features
 - C++ Reference: https://www.cplusplus.com/reference/
 - CPlusPlus Documentation: https://en.cppreference.com/
 - Expat XML Parser: https://libexpat.github.io/
+- XML Expat Article: https://www.xml.com/pub/1999/09/expat/index.html
 - Git Documentation: https://git-scm.com/docs
 - GNU Make Manual: https://www.gnu.org/software/make/manual/make.html
 
 ## Generative AI Use
 
-The following prompts and responses were used to guide implementation:
+The following prompts and responses were used to guide implementation for Student 1's Project 4 work on the transportation planner, command-line interface, documentation, and build setup.
 
-### Student 1 (Prithika) – OpenStreetMap Implementation Prompts
+### Student 1 (Prithika) – Transportation Planner Implementation Prompts
 
-#### Prompt 1: Structuring Nodes And Ways
+#### Prompt 1: Building Separate Graphs For Different Travel Modes
 
 **Question:**
-How should I store nodes and ways so I can access them both by index and by ID?
+How should I organize the transportation planner so shortest path and fastest path can use different rules without making one giant graph routine?
 
 **Response:**
-Use both a std::vector and a std::unordered_map.
-The vector preserves insertion order for index-based access.
-The unordered_map allows fast lookup by ID.
+Use separate adjacency maps for each type of movement:
+- one for shortest-distance road edges
+- one for walking edges
+- one for biking edges
+- one for bus edges
+
+Then combine the walking graph with either bike edges or bus edges depending on which fastest-path case you want to test.
 
 **Implementation:**
 
-Nodes:
+The planner stores:
 ```cpp
-std::vector<std::shared_ptr<SNode>> DNodesByIndex;
-std::unordered_map<TNodeID,std::shared_ptr<SNode>> DNodesByID;
+std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DShortEdges;
+std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DWalkEdges;
+std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DBikeEdges;
+std::unordered_map<TNodeID,std::vector<SDirectedEdge>> DBusEdges;
 ```
 
-Ways:
-```cpp
-std::vector<std::shared_ptr<SWay>> DWaysByIndex;
-std::unordered_map<TWayID,std::shared_ptr<SWay>> DWaysByID;
-```
-
-Both containers are populated inside ParseNodes() and ParseWays().
-
-#### Prompt 2: Parsing Nodes Safely
+#### Prompt 2: Parsing maxspeed Values Safely
 
 **Question:**
-How do I parse <node> elements and skip invalid ones?
+How can I read OSM maxspeed values like "25 mph" without writing a complicated parser?
 
 **Response:**
-When encountering a node element:
-- Extract id, lat, and lon.
-- If any required attribute is missing, skip the node.
-- If it is a self-closing element, store it immediately.
-- Otherwise, continue reading until </node> and collect <tag> children.
+Strip the string, lowercase it, then walk the characters and collect the numeric prefix. Stop once you leave the number after collecting at least one numeric character. If no number exists, fall back to the default speed from the config.
 
 **Implementation:**
 
-In ParseNodes():
+The planner uses a helper that extracts digits and `.`:
 ```cpp
-if(idStr.empty()) continue;
-if(latStr.empty()) continue;
-if(lonStr.empty()) continue;
-```
-
-Tag handling:
-```cpp
-if(node->Attrs.find(k) == node->Attrs.end())
-    node->Keys.push_back(k);
-node->Attrs[k] = v;
-```
-
-#### Prompt 3: Parsing Ways And Validating Node References
-
-**Question:**
-How do I parse <way> elements and ignore references to nodes that don't exist?
-
-**Response:**
-- Skip the way if it has no id.
-- If self-closing, store with zero nodes.
-- Otherwise, read children until </way>.
-- For each <nd ref="..."/>, only add the reference if the node exists in DNodesByID.
-
-**Implementation:**
-
-Reference validation:
-```cpp
-if(DNodesByID.find(ref) != DNodesByID.end())
-    way->Nodes.push_back(ref);
-```
-
-Missing ID skip:
-```cpp
-if(idStr.empty()) return;
-```
-
-#### Prompt 4: Validating Root Element
-
-**Question:**
-How do I ensure parsing only happens if the root element is <osm>?
-
-**Response:**
-Read entities until the first start or complete element.
-If its name is not "osm", return false.
-
-**Implementation:**
-
-In ParseOpenStreetMap():
-```cpp
-if(e.DNameData != DOSMTag){
-    return false;
+for(char c : s){
+    if((c >= '0' && c <= '9') || c == '.'){
+        n.push_back(c);
+    }
+    else if(!n.empty()){
+        break;
+    }
 }
 ```
 
-#### Prompt 5: Cover Missing Node Attributes
+#### Prompt 3: Handling Path Description For Unnamed Roads
 
 **Question:**
-My coverage report says the continue; lines in ParseNodes() for missing id and missing lat aren't covered. What OSM test input should I write to hit those branches?
+How should GetPathDescription decide what street name to use when the current segment has no name?
 
 **Response:**
-Make a test XML with:
-- a node missing id but having lat and lon → triggers if(idStr.empty()) continue;
-- a node missing lat but having id and lon → triggers if(latStr.empty()) continue;
-- one valid node → ensures parsing still adds something
-
-Then assert NodeCount() is 1 and the remaining node can be looked up by ID.
+If the current segment is unnamed, switch the wording from `along` to `toward` and scan forward until you find the next named street. If none exists, use `End`.
 
 **Implementation:**
 
-Created TEST(OSMTest, SkipMissingIdAndLat) with three nodes:
-```xml
-<node lat="38.5" lon="-121.7"/> (missing id)
-<node id="2" lon="-121.8"/> (missing lat)
-<node id="3" lat="38.7" lon="-121.9"/> (valid)
-```
-
-#### Prompt 6: Silencing Warnings And Hiding Coverage Spam
-
-**Question:**
-My builds print a lot of warnings and the lcov/genhtml coverage commands spam the terminal. What Makefile flags/commands can I use to hide that output but still generate coverage?
-
-**Response:**
-- To suppress the PSABI warning from GCC, add -Wno-psabi to your C++ compile flags (your CPPFLAGS is a good place).
-- To hide coverage tool output, redirect stdout/stderr to /dev/null, and set LC_ALL=C so locale warnings don't appear.
-- Keep a final lcov --summary line so you still get a clean coverage summary.
-
-**Implementation:**
-
-PSABI warning suppression was added via:
-```makefile
-CPPFLAGS += -std=c++17 -Wno-psabi
-```
-
-Coverage spam was hidden by redirecting output and forcing locale to C:
-```makefile
-gencoverage:
-	@LC_ALL=C lcov --capture --directory . --no-external --output-file $(TESTCOVER_DIR)/coverage.info > /dev/null 2>&1
-	@LC_ALL=C lcov --remove $(TESTCOVER_DIR)/coverage.info '/usr/*' '*/testsrc/*' --output-file $(TESTCOVER_DIR)/coverage.info > /dev/null 2>&1
-	@LC_ALL=C genhtml $(TESTCOVER_DIR)/coverage.info --output-directory $(TESTCOVER_DIR) > /dev/null 2>&1
-	@echo ""
-	@echo "Coverage Summary:"
-	@LC_ALL=C lcov --summary $(TESTCOVER_DIR)/coverage.info
-```
-
-### Student 2 (Qi Gao) – CSVBusSystem Implementation Prompts
-
-#### Prompt 1: Grouping Route Rows Into A Single Route Object
-
-**Question:**
-routes.csv has multiple rows for the same route name (e.g., A,1 A,2 A,3). How do I combine those into one Route object?
-
-**Response:**
-- Read the header first to locate the route and stop_id columns.
-- Then read each row and use an unordered_map<string, shared_ptr<SRoute>> to group rows by route name.
-
-If the route name appears for the first time:
-- Create a new SRoute
-- Store its name
-- Push it into DRoutesByIndex
-- Add it to DRoutesByName
-
-- Then, for every row, append the stop ID into that route's DStopIDs vector.
-
-**Implementation:**
-
+The description builder does:
 ```cpp
-while(ReadRow(row)){
-    name = row[routeCol];
-    id = stoull(row[stopCol]);
-
-    if(route not yet created)
-        create new route
-
-    route->DStopIDs.push_back(id);
+word = "toward";
+std::size_t k = j;
+while(k < path.size() - 1){
+    auto name = WayName(path[k].second, path[k + 1].second);
+    if(!name.empty()){
+        target = name;
+        break;
+    }
+    k++;
 }
 ```
 
-#### Prompt 2: Handling Missing CSV Headers Safely
+#### Prompt 4: Converting Planner Paths Into Printable Trip Steps
 
 **Question:**
-What should I do if required headers (like stop_id, node_id, or route) are missing?
+What is a simple way to convert a node path and edge modes into the `TTripStep` format?
 
 **Response:**
-- After reading the header row, scan for required column names.
-- If any required column is missing, return false immediately instead of continuing to parse.
-- This prevents invalid memory access and ensures construction fails safely.
+Walk the node list once and pair each node with the mode used to enter it. For the first node, use the first edge mode unless the path begins with a bus segment, in which case start with a walk step at the source.
 
 **Implementation:**
 
-- ReadStops() checks for stop_id and node_id.
-- ReadRoutes() checks for route and stop_id.
-- If any column is missing, the function returns false.
-
-#### Prompt 3: Handling Invalid Index And Missing IDs
-
-**Question:**
-What should functions return when an index is out of bounds or an ID does not exist?
-
-**Response:**
-To avoid crashes:
-- StopByIndex() and StopByID() return nullptr if not found.
-- GetStopID(index) returns CBusSystem::InvalidStopID if the index is invalid.
-
-This keeps behavior consistent and safe.
-
-**Implementation:**
-
-- Used bounds checks for vectors and .find() for maps.
-- Returned nullptr or InvalidStopID when appropriate.
-
-#### Prompt 4: Why Use Both Vector And Unordered_Map?
-
-**Question:**
-Why store both a vector and a map for stops and routes? Isn't one enough?
-
-**Response:**
-Each data structure serves a different purpose:
-- vector preserves insertion order and allows fast access by index.
-- unordered_map allows fast lookup by ID or name.
-
-Using both ensures:
-- StopByIndex() is efficient
-- StopByID() is efficient
-- Order remains consistent
-
-**Implementation:**
-
-Stops:
-- DStopsByIndex
-- DStopsByID
-
-Routes:
-- DRoutesByIndex
-- DRoutesByName
-
-Both structures are populated during parsing.
-
-#### Prompt 5: Debugging When Git Does Not Detect File Changes
-
-**Question:**
-Why did git status show no changes even after modifying files?
-
-**Response:**
-The issue was editing the wrong directory. There were two copies:
-- /workspace/ecs34-project3/ (actual git repo)
-- /workspace/ (outer directory, not tracked)
-
-Changes made outside the repository were not tracked by git.
-
-**Implementation:**
-
-Used:
-```bash
-pwd
-realpath filename
+The planner builds trip steps using:
+```cpp
+if(first == TMode::Bus){
+    out.push_back(std::make_pair(TMode::Walk, nodes[0]));
+}
+else{
+    out.push_back(std::make_pair(first, nodes[0]));
+}
 ```
+
+#### Prompt 5: Writing A Testable Command-Line Processor
+
+**Question:**
+How do I structure the command-line interface so it is easy to test with Google Mock instead of relying on std::cin and std::cout directly?
+
+**Response:**
+Use `CDataSource`, `CDataSink`, and `CDataFactory` everywhere inside the command-line class. Read one line at a time from the source, write strings through a helper function, and keep the last valid path in member state so `save` and `print` can reuse it.
+
+**Implementation:**
+
+The command-line class stores:
+```cpp
+std::shared_ptr<CDataSource> src;
+std::shared_ptr<CDataSink> out;
+std::shared_ptr<CDataSink> err;
+std::shared_ptr<CDataFactory> factory;
+std::shared_ptr<CTransportationPlanner> planner;
+```
+
+#### Prompt 6: Making The Dev Container Support Google Mock
+
+**Question:**
+The command-line tests need gmock, but the container only has partial googletest files. What is the clean way to fix that in the dev container?
+
+**Response:**
+Install `libgmock-dev`, then build googletest/googlemock from `/usr/src/googletest` with CMake. Copy the built static libraries into `/usr/local/lib`, link the headers into `/usr/local/include`, and run `ldconfig`.
+
+**Implementation:**
+
+The Dockerfile was updated to:
+```dockerfile
+cmake -S /usr/src/googletest -B /tmp/googletest-build && \
+cmake --build /tmp/googletest-build && \
+cp /tmp/googletest-build/lib/libgtest*.a /usr/local/lib/ && \
+cp /tmp/googletest-build/lib/libgmock*.a /usr/local/lib/
+```
+
+#### Prompt 7: Preventing Makefile Test Targets From Overwriting Scripts
+
+**Question:**
+My Makefile run targets are accidentally overwriting the tracked `run_*` files with XML output. What is the simplest fix?
+
+**Response:**
+Send the XML output into `testtmp/` with a `.xml` extension and do not move it back into the repo root. Also mark the `run_*` targets as phony so Make always runs the commands instead of treating those tracked files as outputs.
+
+**Implementation:**
+
+The updated run targets use:
+```makefile
+$(TEST_TP_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@.xml
+```
+
+and the run targets were added to `.PHONY`.

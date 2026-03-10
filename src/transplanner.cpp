@@ -28,6 +28,7 @@ class CArgs{
             data = "./data";
             results = "./results";
             ok = true;
+            // checking command line flags
             for(const auto &a : args){
                 if(a.find("--data") == 0){
                     auto p = StringUtils::Split(a, "=");
@@ -70,6 +71,7 @@ class CArgs{
 
 int main(int argc, char *argv[]){
     std::vector<std::string> args;
+    // grabbing args except program name
     for(int i = 1; i < argc; i++){
         args.push_back(argv[i]);
     }
@@ -95,6 +97,7 @@ int main(int argc, char *argv[]){
     auto out = std::make_shared<CStandardDataSink>();
     auto err = std::make_shared<CStandardErrorDataSink>();
 
+    // hand everything to the command line wrapper
     CTransportationPlannerCommandLine cli(in, out, err, resultsfactory, planner);
     if(!cli.ProcessCommands()){
         return EXIT_FAILURE;

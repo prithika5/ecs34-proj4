@@ -82,6 +82,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
     }
 
     void AddEdge(std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID a, TNodeID b, double dist, double time, TMode mode){
+        // just putting an edge in the graph map
         SDirectedEdge e;
         e.DDestination = b;
         e.DDistanceMiles = dist;
@@ -94,6 +95,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
         if(!DStreetMap){
             return;
         }
+        // grabbing speeds from config and then building road edges
         double ws = DConfig ? DConfig->WalkSpeed() : 3.0;
         double bs = DConfig ? DConfig->BikeSpeed() : 8.0;
         double ds = DConfig ? DConfig->DefaultSpeedLimit() : 25.0;
@@ -166,6 +168,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
         if(!DBusSystem){
             return;
         }
+        // bus edges are stop to stop using shortest road path
         double stopt = DConfig ? DConfig->BusStopTime() : 30.0;
         if(stopt < 0.0){
             stopt = 0.0;
@@ -219,6 +222,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
     }
 
     bool FindPath(const std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID src, TNodeID dst, std::vector<TNodeID> &outnodes, std::vector<TMode> &outmodes, double &outcost) const{
+        // basic dijkstra on whatever graph map gets passed in
         outnodes.clear();
         outmodes.clear();
         outcost = CPathRouter::NoPathExists;
@@ -303,6 +307,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
     }
 
     std::vector<CTransportationPlanner::TTripStep> BuildTrip(const std::vector<TNodeID> &nodes, const std::vector<TMode> &modes) const{
+        // turning node list into trip steps for planner output
         std::vector<CTransportationPlanner::TTripStep> out;
         if(nodes.empty()){
             return out;
@@ -404,6 +409,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
     }
 
     bool BuildDescription(const std::vector<CTransportationPlanner::TTripStep> &path, std::vector<std::string> &desc) const{
+        // this turns the saved path into the printed directions
         desc.clear();
         if(path.empty()){
             return false;
