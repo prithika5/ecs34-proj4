@@ -579,7 +579,5 @@ double CDijkstraTransportationPlanner::FindFastestPath(TNodeID src, TNodeID dest
 }
 
 bool CDijkstraTransportationPlanner::GetPathDescription(const std::vector<TTripStep> &path, std::vector<std::string> &desc) const{
-    (void)path;
-    desc.clear();
-    return false;
+    return DImplementation->BuildDescription(path, desc);
 }
