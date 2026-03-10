@@ -39,6 +39,8 @@ TEST_CSVBS_OBJ_FILES = $(TESTOBJ_DIR)/StringDataSource.o $(TESTOBJ_DIR)/StringUt
 TEST_CSVBSINDEX_OBJ_FILES = $(TESTOBJ_DIR)/StringDataSource.o $(TESTOBJ_DIR)/StringUtils.o $(TESTOBJ_DIR)/DSVReader.o $(TESTOBJ_DIR)/CSVBusSystem.o $(TESTOBJ_DIR)/BusSystemIndexer.o  $(TESTOBJ_DIR)/CSVBusSystemIndexerTest.o
 TEST_OSM_OBJ_FILES = $(TESTOBJ_DIR)/StringDataSource.o $(TESTOBJ_DIR)/XMLReader.o $(TESTOBJ_DIR)/OpenStreetMap.o $(TESTOBJ_DIR)/OpenStreetMapTest.o
 TEST_DPR_OBJ_FILES = $(TESTOBJ_DIR)/DijkstraPathRouter.o $(TESTOBJ_DIR)/DijkstraPathRouterTest.o 
+TEST_TP_OBJ_FILES = $(TESTOBJ_DIR)/StringDataSource.o $(TESTOBJ_DIR)/StringUtils.o $(TESTOBJ_DIR)/DSVReader.o $(TESTOBJ_DIR)/CSVBusSystem.o $(TESTOBJ_DIR)/XMLReader.o $(TESTOBJ_DIR)/OpenStreetMap.o $(TESTOBJ_DIR)/GeographicUtils.o $(TESTOBJ_DIR)/DijkstraTransportationPlanner.o $(TESTOBJ_DIR)/CSVOSMTransportationPlannerTest.o
+TEST_TPCL_OBJ_FILES = $(TESTOBJ_DIR)/StringDataSource.o $(TESTOBJ_DIR)/StringDataSink.o $(TESTOBJ_DIR)/StringUtils.o $(TESTOBJ_DIR)/GeographicUtils.o $(TESTOBJ_DIR)/TransportationPlannerCommandLine.o $(TESTOBJ_DIR)/TPCommandLineTest.o
 # Define the test target
 TEST_STR_TARGET	= $(TESTBIN_DIR)/teststrutils
 TEST_STRSRC_TARGET	= $(TESTBIN_DIR)/teststrdatasource 
@@ -51,6 +53,20 @@ TEST_CSVBS_TARGET = $(TESTBIN_DIR)/testcsvbs
 TEST_CSVBSINDEX_TARGET = $(TESTBIN_DIR)/testcsvbsindexer
 TEST_OSM_TARGET	= $(TESTBIN_DIR)/testosm
 TEST_DPR_TARGET = $(TESTBIN_DIR)/testdijkstrapathrouter
+TEST_TP_TARGET = $(TESTBIN_DIR)/testtp
+TEST_TPCL_TARGET = $(TESTBIN_DIR)/testtpcl
+
+TEST_TPCL_LDFLAGS = $(TEST_LDFLAGS) -lgmock
+
+APP_CFLAGS		= $(CFLAGS) -O2
+APP_CPPFLAGS	= $(CPPFLAGS)
+APP_LDFLAGS		= $(LDFLAGS)
+
+TRANSPLANNER_OBJ_FILES = $(OBJ_DIR)/transplanner.o $(OBJ_DIR)/DijkstraTransportationPlanner.o $(OBJ_DIR)/TransportationPlannerCommandLine.o $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/FileDataFactory.o $(OBJ_DIR)/FileDataSource.o $(OBJ_DIR)/FileDataSink.o $(OBJ_DIR)/StandardDataSource.o $(OBJ_DIR)/StandardDataSink.o $(OBJ_DIR)/StandardErrorDataSink.o $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/GeographicUtils.o
+SPEEDTEST_OBJ_FILES = $(OBJ_DIR)/speedtest.o $(OBJ_DIR)/DijkstraTransportationPlanner.o $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/FileDataFactory.o $(OBJ_DIR)/FileDataSource.o $(OBJ_DIR)/FileDataSink.o $(OBJ_DIR)/StandardDataSource.o $(OBJ_DIR)/StandardDataSink.o $(OBJ_DIR)/StandardErrorDataSink.o $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/GeographicUtils.o
+
+TRANSPLANNER_TARGET = $(BIN_DIR)/transplanner
+SPEEDTEST_TARGET = $(BIN_DIR)/speedtest
 
 
 all: directories \
@@ -62,7 +78,10 @@ all: directories \
 		run_xmltest \
 		run_csvbstest \
 		run_osmtest \
-		gencoverage
+		run_tptest \
+		run_tpcltest \
+		$(TRANSPLANNER_TARGET) \
+		$(SPEEDTEST_TARGET)
 
 run_strtest: $(TEST_STR_TARGET)
 	$(TEST_STR_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@
@@ -77,7 +96,7 @@ run_strsinktest: $(TEST_STRSINK_TARGET)
 	mv $(TESTTMP_DIR)/$@ $@
 
 run_filesstest: $(TEST_FILESS_TARGET)
-    $(TEST_FILESS_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@
+	$(TEST_FILESS_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@
 	mv $(TESTTMP_DIR)/$@ $@
 
 run_geoutilstest: $(TEST_GEOUTILS_TARGET)
@@ -107,6 +126,16 @@ run_osmtest: $(TEST_OSM_TARGET)
 run_dprtest: $(TEST_DPR_TARGET)
 	$(TEST_DPR_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@
 	mv $(TESTTMP_DIR)/$@ $@
+
+run_tptest: $(TEST_TP_TARGET)
+	$(TEST_TP_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@
+	mv $(TESTTMP_DIR)/$@ $@
+
+run_tpcltest: $(TEST_TPCL_TARGET)
+	$(TEST_TPCL_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@
+	mv $(TESTTMP_DIR)/$@ $@
+
+coverage: gencoverage
 
 gencoverage:
 	lcov --capture --directory . --output-file $(TESTCOVER_DIR)/coverage.info --ignore-errors gcov,source
@@ -147,12 +176,26 @@ $(TEST_OSM_TARGET): $(TEST_OSM_OBJ_FILES)
 $(TEST_DPR_TARGET): $(TEST_DPR_OBJ_FILES)
 	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(TEST_DPR_OBJ_FILES) $(TEST_LDFLAGS) -o $(TEST_DPR_TARGET)
 
+$(TEST_TP_TARGET): $(TEST_TP_OBJ_FILES)
+	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(TEST_TP_OBJ_FILES) $(TEST_LDFLAGS) -o $(TEST_TP_TARGET)
+
+$(TEST_TPCL_TARGET): $(TEST_TPCL_OBJ_FILES)
+	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(TEST_TPCL_OBJ_FILES) $(TEST_TPCL_LDFLAGS) -o $(TEST_TPCL_TARGET)
+
+$(TRANSPLANNER_TARGET): $(TRANSPLANNER_OBJ_FILES)
+	$(CXX) $(APP_CFLAGS) $(APP_CPPFLAGS) $(TRANSPLANNER_OBJ_FILES) $(APP_LDFLAGS) -o $(TRANSPLANNER_TARGET)
+
+$(SPEEDTEST_TARGET): $(SPEEDTEST_OBJ_FILES)
+	$(CXX) $(APP_CFLAGS) $(APP_CPPFLAGS) $(SPEEDTEST_OBJ_FILES) $(APP_LDFLAGS) -o $(SPEEDTEST_TARGET)
 
 $(TESTOBJ_DIR)/%.o: $(TESTSRC_DIR)/%.cpp
 	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
 
 $(TESTOBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(APP_CFLAGS) $(APP_CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
 
 .PHONY: directories
 directories:
@@ -173,4 +216,4 @@ clean::
 	rm -rf $(TESTCOVER_DIR)
 	rm -rf $(TESTTMP_DIR)
 
-.PHONY: clean
+.PHONY: clean coverage
