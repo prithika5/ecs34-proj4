@@ -162,6 +162,62 @@ struct CDijkstraTransportationPlanner::SImplementation{
         }
     }
 
+    void BuildBusEdges(){
+        if(!DBusSystem){
+            return;
+        }
+        double stopt = DConfig ? DConfig->BusStopTime() : 30.0;
+        if(stopt < 0.0){
+            stopt = 0.0;
+        }
+        double stoph = stopt / 3600.0;
+
+        for(std::size_t i = 0; i < DBusSystem->RouteCount(); i++){
+            auto route = DBusSystem->RouteByIndex(i);
+            if(!route){
+                continue;
+            }
+            if(route->StopCount() < 2){
+                continue;
+            }
+            for(std::size_t j = 1; j < route->StopCount(); j++){
+                auto sa = DBusSystem->StopByID(route->GetStopID(j - 1));
+                auto sb = DBusSystem->StopByID(route->GetStopID(j));
+                if(!sa || !sb){
+                    continue;
+                }
+                TNodeID a = sa->NodeID();
+                TNodeID b = sb->NodeID();
+                DRouteNames[std::make_pair(a,b)].insert(route->Name());
+
+                std::vector<TNodeID> busnodes;
+                std::vector<TMode> busmodes;
+                double dist = CPathRouter::NoPathExists;
+                if(!FindPath(DShortEdges, a, b, busnodes, busmodes, dist)){
+                    continue;
+                }
+                double time = 0.0;
+                for(std::size_t k = 1; k < busnodes.size(); k++){
+                    auto it = DWayInfo.find(std::make_pair(busnodes[k - 1],busnodes[k]));
+                    if(it == DWayInfo.end()){
+                        time = CPathRouter::NoPathExists;
+                        break;
+                    }
+                    if(it->second.DSpeed <= 0.0){
+                        time = CPathRouter::NoPathExists;
+                        break;
+                    }
+                    time += it->second.DDistanceMiles / it->second.DSpeed;
+                }
+                if(time == CPathRouter::NoPathExists){
+                    continue;
+                }
+                time += stoph;
+                AddEdge(DBusEdges, a, b, dist, time, TMode::Bus);
+            }
+        }
+    }
+
     bool FindPath(const std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &m, TNodeID src, TNodeID dst, std::vector<TNodeID> &outnodes, std::vector<TMode> &outmodes, double &outcost) const{
         outnodes.clear();
         outmodes.clear();
@@ -275,6 +331,7 @@ struct CDijkstraTransportationPlanner::SImplementation{
             }
         }
         BuildRoadEdges();
+        BuildBusEdges();
     }
 
     std::size_t NodeCount() const noexcept{
