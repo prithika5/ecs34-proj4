@@ -14,6 +14,7 @@ TESTOBJ_DIR		= ./testobj
 TESTBIN_DIR		= ./testbin
 TESTCOVER_DIR 	= ./htmlcov
 TESTTMP_DIR		= ./testtmp
+PROJECT4_COVER_FILES = '*/src/BusSystemIndexer.cpp' '*/src/DijkstraPathRouter.cpp' '*/src/DijkstraTransportationPlanner.cpp' '*/src/TransportationPlannerCommandLine.cpp'
 
 # Define the flags
 PKGS			= expat
@@ -86,7 +87,8 @@ all: directories \
 		run_tptest \
 		run_tpcltest \
 		$(TRANSPLANNER_TARGET) \
-		$(SPEEDTEST_TARGET)
+		$(SPEEDTEST_TARGET) \
+		coverage
 
 run_strtest: $(TEST_STR_TARGET)
 	$(TEST_STR_TARGET) --gtest_output=xml:$(TESTTMP_DIR)/$@.xml
@@ -134,7 +136,7 @@ coverage: gencoverage
 
 gencoverage:
 	lcov --capture --directory . --output-file $(TESTCOVER_DIR)/coverage.info --ignore-errors gcov,source
-	lcov --remove $(TESTCOVER_DIR)/coverage.info '/usr/*' '*/testsrc/*' --output-file $(TESTCOVER_DIR)/coverage.info
+	lcov --extract $(TESTCOVER_DIR)/coverage.info $(PROJECT4_COVER_FILES) --output-file $(TESTCOVER_DIR)/coverage.info
 	genhtml $(TESTCOVER_DIR)/coverage.info --output-directory $(TESTCOVER_DIR)
 
 $(TEST_STR_TARGET): $(TEST_STR_OBJ_FILES)
