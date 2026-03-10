@@ -328,6 +328,17 @@ struct CDijkstraTransportationPlanner::SImplementation{
         return out;
     }
 
+    std::unordered_map<TNodeID,std::vector<SDirectedEdge>> Merge(const std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &a, const std::unordered_map<TNodeID,std::vector<SDirectedEdge>> &b) const{
+        auto out = a;
+        for(const auto &p : b){
+            auto &v = out[p.first];
+            for(const auto &e : p.second){
+                v.push_back(e);
+            }
+        }
+        return out;
+    }
+
     SImplementation(std::shared_ptr<SConfiguration> config)
         : DConfig(std::move(config)){
         if(DConfig){
@@ -398,9 +409,28 @@ double CDijkstraTransportationPlanner::FindShortestPath(TNodeID src, TNodeID des
 
 double CDijkstraTransportationPlanner::FindFastestPath(TNodeID src, TNodeID dest, std::vector<TTripStep> &path){
     path.clear();
-    (void)src;
-    (void)dest;
-    return CPathRouter::NoPathExists;
+    auto g1 = DImplementation->Merge(DImplementation->DWalkEdges, DImplementation->DBusEdges);
+    auto g2 = DImplementation->Merge(DImplementation->DWalkEdges, DImplementation->DBikeEdges);
+
+    std::vector<TNodeID> n1;
+    std::vector<ETransportationMode> m1;
+    double c1 = CPathRouter::NoPathExists;
+    bool ok1 = DImplementation->FindPath(g1, src, dest, n1, m1, c1);
+
+    std::vector<TNodeID> n2;
+    std::vector<ETransportationMode> m2;
+    double c2 = CPathRouter::NoPathExists;
+    bool ok2 = DImplementation->FindPath(g2, src, dest, n2, m2, c2);
+
+    if(!ok1 && !ok2){
+        return CPathRouter::NoPathExists;
+    }
+    if(ok1 && (!ok2 || c1 <= c2)){
+        path = DImplementation->BuildTrip(n1, m1);
+        return c1;
+    }
+    path = DImplementation->BuildTrip(n2, m2);
+    return c2;
 }
 
 bool CDijkstraTransportationPlanner::GetPathDescription(const std::vector<TTripStep> &path, std::vector<std::string> &desc) const{
