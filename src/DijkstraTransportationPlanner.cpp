@@ -457,16 +457,16 @@ struct CDijkstraTransportationPlanner::SImplementation{
                 return false;
             }
             auto dir = SGeographicUtils::BearingToDirection(SGeographicUtils::CalculateBearing(n1->Location(), n2->Location()));
-            std::string target = cur;
-            std::string word = "along";
-            if(target.empty()){
-                word = "toward";
-                std::size_t k = j + 1;
-                while(k < path.size() - 1){
-                    auto name = WayName(path[k].second, path[k + 1].second);
-                    if(!name.empty()){
-                        target = name;
-                        break;
+                std::string target = cur;
+                std::string word = "along";
+                if(target.empty()){
+                    word = "toward";
+                    std::size_t k = j;
+                    while(k < path.size() - 1){
+                        auto name = WayName(path[k].second, path[k + 1].second);
+                        if(!name.empty()){
+                            target = name;
+                            break;
                     }
                     k++;
                 }
