@@ -305,9 +305,12 @@ std::shared_ptr<CStreetMap::SNode> CDijkstraTransportationPlanner::SortedNodeByI
 
 double CDijkstraTransportationPlanner::FindShortestPath(TNodeID src, TNodeID dest, std::vector<TNodeID> &path){
     path.clear();
-    (void)src;
-    (void)dest;
-    return CPathRouter::NoPathExists;
+    std::vector<ETransportationMode> modes;
+    double cost = CPathRouter::NoPathExists;
+    if(!DImplementation->FindPath(DImplementation->DShortEdges, src, dest, path, modes, cost)){
+        return CPathRouter::NoPathExists;
+    }
+    return cost;
 }
 
 double CDijkstraTransportationPlanner::FindFastestPath(TNodeID src, TNodeID dest, std::vector<TTripStep> &path){
