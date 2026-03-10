@@ -51,3 +51,13 @@ TEST(DijkstraPathRouter, InvalidEdge){
     EXPECT_FALSE(PathRouter.AddEdge(10, VertexB, 1.0));
 }
 
+//negative weight
+
+TEST(DijkstraPathRouter, NegativeWeight){
+    CDijkstraPathRouter PathRouter;
+
+    auto VertexA = PathRouter.AddVertex(std::string("A"));
+    auto VertexB = PathRouter.AddVertex(std::string("B"));
+
+    EXPECT_FALSE(PathRouter.AddEdge(VertexA, VertexB, -1.0));
+}
