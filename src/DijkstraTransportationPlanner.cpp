@@ -339,6 +339,151 @@ struct CDijkstraTransportationPlanner::SImplementation{
         return out;
     }
 
+    static std::string ModeName(TMode m){
+        if(m == TMode::Walk){
+            return "Walk";
+        }
+        if(m == TMode::Bike){
+            return "Bike";
+        }
+        return "Bus";
+    }
+
+    double Distance(TNodeID a, TNodeID b) const{
+        auto it = DWayInfo.find(std::make_pair(a,b));
+        if(it != DWayInfo.end()){
+            return it->second.DDistanceMiles;
+        }
+        auto na = DStreetMap ? DStreetMap->NodeByID(a) : nullptr;
+        auto nb = DStreetMap ? DStreetMap->NodeByID(b) : nullptr;
+        if(!na || !nb){
+            return 0.0;
+        }
+        return SGeographicUtils::HaversineDistanceInMiles(na->Location(), nb->Location());
+    }
+
+    std::string WayName(TNodeID a, TNodeID b) const{
+        auto it = DWayInfo.find(std::make_pair(a,b));
+        if(it == DWayInfo.end()){
+            return "";
+        }
+        return it->second.DName;
+    }
+
+    std::string BusRoute(const std::vector<CTransportationPlanner::TTripStep> &path, std::size_t i, std::size_t &j) const{
+        j = i;
+        if(i + 1 >= path.size()){
+            return "";
+        }
+        auto a = path[i].second;
+        auto b = path[i + 1].second;
+        auto it = DRouteNames.find(std::make_pair(a,b));
+        if(it == DRouteNames.end() || it->second.empty()){
+            return "";
+        }
+        std::string best = "";
+        std::size_t bestj = i + 1;
+        for(const auto &name : it->second){
+            std::size_t cur = i + 1;
+            while(cur < path.size() - 1){
+                auto x = path[cur].second;
+                auto y = path[cur + 1].second;
+                auto rit = DRouteNames.find(std::make_pair(x,y));
+                if(rit == DRouteNames.end() || rit->second.find(name) == rit->second.end()){
+                    break;
+                }
+                cur++;
+            }
+            if(best.empty() || cur > bestj || (cur == bestj && name < best)){
+                best = name;
+                bestj = cur;
+            }
+        }
+        j = bestj;
+        return best;
+    }
+
+    bool BuildDescription(const std::vector<CTransportationPlanner::TTripStep> &path, std::vector<std::string> &desc) const{
+        desc.clear();
+        if(path.empty()){
+            return false;
+        }
+        auto first = DStreetMap ? DStreetMap->NodeByID(path.front().second) : nullptr;
+        auto last = DStreetMap ? DStreetMap->NodeByID(path.back().second) : nullptr;
+        if(!first || !last){
+            return false;
+        }
+        desc.push_back("Start at " + SGeographicUtils::ConvertLLToDMS(first->Location()));
+
+        std::size_t i = 0;
+        while(i + 1 < path.size()){
+            auto mode = path[i + 1].first;
+            if(mode == TMode::Bus){
+                std::size_t j = i + 1;
+                std::string r = BusRoute(path, i, j);
+                if(r.empty()){
+                    return false;
+                }
+                auto s1 = DStopByNode.find(path[i].second);
+                auto s2 = DStopByNode.find(path[j].second);
+                if(s1 == DStopByNode.end() || s2 == DStopByNode.end()){
+                    return false;
+                }
+                desc.push_back("Take Bus " + r + " from stop " + std::to_string(s1->second) + " to stop " + std::to_string(s2->second));
+                i = j;
+                continue;
+            }
+
+            std::size_t j = i + 1;
+            double dist = Distance(path[i].second, path[i + 1].second);
+            std::string cur = WayName(path[i].second, path[i + 1].second);
+            while(j + 1 < path.size() && path[j + 1].first == mode){
+                std::string nxt = WayName(path[j].second, path[j + 1].second);
+                if(!cur.empty() && nxt != cur){
+                    break;
+                }
+                if(cur.empty() && !nxt.empty()){
+                    break;
+                }
+                dist += Distance(path[j].second, path[j + 1].second);
+                if(cur.empty()){
+                    cur = nxt;
+                }
+                j++;
+            }
+            auto n1 = DStreetMap->NodeByID(path[i].second);
+            auto n2 = DStreetMap->NodeByID(path[j].second);
+            if(!n1 || !n2){
+                return false;
+            }
+            auto dir = SGeographicUtils::BearingToDirection(SGeographicUtils::CalculateBearing(n1->Location(), n2->Location()));
+            std::string target = cur;
+            std::string word = "along";
+            if(target.empty()){
+                word = "toward";
+                std::size_t k = j + 1;
+                while(k < path.size() - 1){
+                    auto name = WayName(path[k].second, path[k + 1].second);
+                    if(!name.empty()){
+                        target = name;
+                        break;
+                    }
+                    k++;
+                }
+                if(target.empty()){
+                    target = "End";
+                }
+            }
+            std::ostringstream out;
+            out << ModeName(mode) << " " << dir << " " << word << " " << target << " for " << std::fixed << std::setprecision(1) << dist << " mi";
+            desc.push_back(out.str());
+            i = j;
+        }
+
+        desc.push_back("End at " + SGeographicUtils::ConvertLLToDMS(last->Location()));
+        return true;
+    }
+
     SImplementation(std::shared_ptr<SConfiguration> config)
         : DConfig(std::move(config)){
         if(DConfig){
