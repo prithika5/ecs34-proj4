@@ -10,7 +10,7 @@ afterEach(() => {
 describe("RouteHacker app", () => {
   it("renders the route form", () => {
     render(<App />);
-    expect(screen.getByText(/Find the shortest or fastest path across Davis/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Choose a start, destination, and route mode/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /See best route/i })).toBeInTheDocument();
   });
 
@@ -83,7 +83,7 @@ describe("RouteHacker app", () => {
     fireEvent.click(screen.getByRole("button", { name: /Start navigation/i }));
     expect(screen.getByText(/Guided navigation is active/i)).toBeInTheDocument();
     expect(screen.getByText(/Location ready near/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Finish navigation|Next step/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Finish|Next step/i }));
   });
 
   it("renders API errors", async () => {

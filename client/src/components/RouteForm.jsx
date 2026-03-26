@@ -4,11 +4,10 @@ export default function RouteForm({ formState, onChange, onSubmit, loading, vali
   const activeLocations = locationOptions.filter((location) => location.status === "active");
 
   return (
-    <form className="route-form" onSubmit={onSubmit}>
+    <form className="route-form card" onSubmit={onSubmit}>
       <div className="form-intro">
-        <p className="eyebrow">Search route</p>
-        <h2>Where are you headed?</h2>
-        <p>{activeLocations.length} active destinations are available in the current route map.</p>
+        <p className="eyebrow">Planner</p>
+        <h2>Search a route</h2>
       </div>
 
       <div className="field-grid">
@@ -37,27 +36,23 @@ export default function RouteForm({ formState, onChange, onSubmit, loading, vali
 
       <fieldset className="mode-toggle">
         <legend>Optimization</legend>
-        {optimizationModes.map((mode) => (
-          <label key={mode.id} className={formState.optimization === mode.id ? "selected" : ""}>
-            <input
-              type="radio"
-              name="optimization"
-              value={mode.id}
-              checked={formState.optimization === mode.id}
-              onChange={onChange}
-            />
-            <span>{mode.label}</span>
-            <small>{mode.description}</small>
-          </label>
-        ))}
+        <div className="mode-segmented">
+          {optimizationModes.map((mode) => (
+            <label key={mode.id} className={formState.optimization === mode.id ? "selected" : ""}>
+              <input
+                type="radio"
+                name="optimization"
+                value={mode.id}
+                checked={formState.optimization === mode.id}
+                onChange={onChange}
+              />
+              <span>{mode.label}</span>
+            </label>
+          ))}
+        </div>
       </fieldset>
 
       {validationError ? <p className="message error">{validationError}</p> : null}
-
-      <div className="field-hint">
-        <span className="field-hint-dot" />
-        <p>Choose two different Davis locations to compare the route tradeoff.</p>
-      </div>
 
       <button type="submit" disabled={loading}>
         {loading ? "Finding best route..." : "See best route"}

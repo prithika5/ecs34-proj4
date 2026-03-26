@@ -18,11 +18,11 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   function handleChange(event) {
-    const { name, value, type } = event.target;
+    const { name, value } = event.target;
 
     setFormState((current) => ({
       ...current,
-      [name]: type === "radio" ? value : value
+      [name]: value
     }));
   }
 
@@ -68,24 +68,18 @@ export default function App() {
           <img src="/logo.png" alt="RouteHacker logo" className="brand-logo" />
           <div>
             <p className="brand-kicker">RouteHacker</p>
-            <p className="brand-subtitle">A Davis routing app for clear route decisions.</p>
+            <p className="brand-subtitle">Davis route planning</p>
           </div>
         </div>
+        <span className="header-chip">Live route planner</span>
       </header>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Davis route planner</p>
-          <h1>Find the shortest or fastest path across Davis.</h1>
-          <p className="lede">
-            RouteHacker helps you compare route options with clear totals, simple steps, and deterministic explanations.
-          </p>
-          <div className="feature-strip">
-            <span>Shortest or fastest</span>
-            <span>Davis-focused stops</span>
-            <span>Deterministic explanations</span>
-          </div>
+      <section className="planner-shell">
+        <div className="planner-intro card">
+          <p className="eyebrow">Route search</p>
+          <h1>Choose a start, destination, and route mode.</h1>
         </div>
+
         <RouteForm
           formState={formState}
           onChange={handleChange}
