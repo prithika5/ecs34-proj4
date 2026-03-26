@@ -18,6 +18,22 @@ function getModeIcon(mode) {
   return "walk";
 }
 
+function getTradeoffCopy(route, comparisonRoute) {
+  if (route.highlights?.tradeoffLabel && comparisonRoute) {
+    return `${route.highlights.tradeoffLabel} compared with ${formatMode(comparisonRoute.optimization).toLowerCase()}.`;
+  }
+
+  if (!comparisonRoute) {
+    return "Best available route for the selected mode.";
+  }
+
+  if (route.optimization === "fastest") {
+    return "Faster arrival with a slightly longer trip.";
+  }
+
+  return "Less distance with a slightly slower arrival.";
+}
+
 export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
   const startLocation = getLocationOptionById(formState?.start);
   const endLocation = getLocationOptionById(formState?.end);
@@ -97,6 +113,8 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
 
   const currentStep = route.steps[currentStepIndex];
   const navigationComplete = currentStepIndex >= route.steps.length - 1;
+  const dominantMode = route.highlights?.dominantMode ? formatMode(route.highlights.dominantMode) : "Mixed";
+  const tradeoffCopy = getTradeoffCopy(route, comparisonRoute);
 
   return (
     <section className="results-shell">
@@ -105,9 +123,16 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
         <div className="result-heading">
           <div>
             <h2>{route.summary}</h2>
-            <p className="result-subtitle">
-              {startLocation?.label} to {endLocation?.label}
-            </p>
+            <div className="route-endpoints">
+              <div>
+                <span>Start</span>
+                <strong>{startLocation?.label}</strong>
+              </div>
+              <div>
+                <span>End</span>
+                <strong>{endLocation?.label}</strong>
+              </div>
+            </div>
           </div>
           <span className={`mode-pill ${route.optimization}`}>{formatMode(route.optimization)}</span>
         </div>
@@ -121,8 +146,8 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
             <strong>{route.totals.time}</strong>
           </article>
           <article>
-            <span>Mode</span>
-            <strong>{formatMode(route.optimization)}</strong>
+            <span>Dominant mode</span>
+            <strong>{dominantMode}</strong>
           </article>
         </div>
       </section>
@@ -146,53 +171,64 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
               </p>
             </article>
           </div>
-          <p className="comparison-note">
-            {route.optimization === "fastest"
-              ? `Fastest saves time, while ${comparisonRoute.optimization} keeps the trip tighter on mileage.`
-              : `Shortest reduces mileage, while ${comparisonRoute.optimization} gets you there faster.`}
-          </p>
+          <p className="comparison-note">{tradeoffCopy}</p>
         </section>
       ) : null}
 
-      <section className="results-panel explanation-card">
-        <p className="eyebrow">Explanation</p>
+      <section className="results-panel why-card">
+        <p className="eyebrow">Why this route?</p>
         <p>{route.explanation}</p>
         {route.highlights ? <p className="explanation-subcopy">{route.highlights.campusFeel}</p> : null}
       </section>
 
-      <section className="results-panel navigation-card">
-        <div className="navigation-header">
+      <section className="results-panel steps-card">
+        <div className="steps-header">
           <div>
-            <p className="eyebrow">Navigation mode</p>
-            <h3>{navigationActive ? "Guided navigation is active." : "Step through the route one instruction at a time."}</h3>
+            <p className="eyebrow">Route steps</p>
+            <h3>{navigationActive ? "Live step focus" : "Timeline"}</h3>
           </div>
           <span className={`nav-status-pill ${navigationActive ? "live" : "idle"}`}>
-            {navigationActive ? "Active" : "Standby"}
+            {navigationActive ? `Step ${Math.min(currentStepIndex + 1, route.steps.length)}` : `${route.steps.length} steps`}
           </span>
-        </div>
-
-        <div className="navigation-meta">
-          <span>
-            Step {Math.min(currentStepIndex + 1, route.steps.length)} of {route.steps.length}
-          </span>
-          <span>{locationStatus}</span>
         </div>
 
         {navigationActive ? (
-          <div className="navigation-step">
-            <CuteCampusIcon variant={getModeIcon(currentStep.mode)} className="navigation-step-icon" />
-            <div>
-              <strong>{currentStep.instruction}</strong>
-              <p>
-                {formatMode(currentStep.mode)} · {currentStep.distance} · {currentStep.time}
-              </p>
+          <div className="navigation-inline">
+            <div className="navigation-meta">
+              <span>{locationStatus}</span>
+              <span>
+                {Math.min(currentStepIndex + 1, route.steps.length)} of {route.steps.length}
+              </span>
+            </div>
+            <div className="navigation-step">
+              <CuteCampusIcon variant={getModeIcon(currentStep.mode)} className="navigation-step-icon" />
+              <div>
+                <strong>{currentStep.instruction}</strong>
+                <p>
+                  {formatMode(currentStep.mode)} · {currentStep.distance} · {currentStep.time}
+                </p>
+              </div>
             </div>
           </div>
-        ) : (
-          <p className="navigation-empty">Start navigation to focus on the current instruction without scanning the full route.</p>
-        )}
+        ) : null}
 
-        <div className="navigation-actions">
+        <ol className="step-list">
+          {route.steps.map((step) => (
+            <li key={step.index}>
+              <span className="step-marker">{step.index}</span>
+              <div className="step-card">
+                <div className="step-card-topline">
+                  <CuteCampusIcon variant={getModeIcon(step.mode)} className="step-campus-icon" />
+                  <span className="step-mode">{formatMode(step.mode)}</span>
+                </div>
+                <strong>{step.instruction}</strong>
+                <p>{step.distance} · {step.time}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div className="navigation-actions compact">
           {!navigationActive ? (
             <button type="button" className="secondary-button" onClick={() => setNavigationActive(true)}>
               Start navigation
@@ -236,24 +272,6 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
             Reset
           </button>
         </div>
-      </section>
-
-      <section className="results-panel steps-card">
-        <p className="eyebrow">Route steps</p>
-        <ol className="step-list">
-          {route.steps.map((step) => (
-            <li key={step.index}>
-              <span className="step-marker">{step.index}</span>
-              <div className="step-card">
-                <CuteCampusIcon variant={getModeIcon(step.mode)} className="step-campus-icon" />
-                <strong>{step.instruction}</strong>
-                <p>
-                  {formatMode(step.mode)} · {step.distance} · {step.time}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
       </section>
     </section>
   );

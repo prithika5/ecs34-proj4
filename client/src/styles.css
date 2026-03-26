@@ -273,23 +273,48 @@ button:disabled {
 }
 
 .result-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.75rem;
+  display: grid;
+  gap: 0.8rem;
 }
 
-.result-subtitle {
-  margin-top: 0.35rem;
+.route-endpoints {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.route-endpoints div {
+  padding: 0.7rem 0.8rem;
+  border-radius: 16px;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+}
+
+.route-endpoints span,
+.step-mode {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--muted);
+  font-weight: 800;
+}
+
+.route-endpoints strong {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.96rem;
+  line-height: 1.25;
 }
 
 .mode-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: fit-content;
   min-width: 104px;
-  padding: 0.6rem 0.85rem;
+  padding: 0.55rem 0.8rem;
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 800;
@@ -311,12 +336,12 @@ button:disabled {
 .stats,
 .comparison-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .stats {
   grid-template-columns: repeat(3, 1fr);
-  margin-top: 1rem;
+  margin-top: 0.85rem;
 }
 
 .stats article,
@@ -324,15 +349,14 @@ button:disabled {
 .step-card {
   background: var(--surface-muted);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 15px;
 }
 
 .stats article,
 .comparison-grid article,
 .comparison-card,
-.explanation-card,
-.navigation-card {
-  padding: 0.95rem;
+.why-card {
+  padding: 0.85rem;
 }
 
 .stats span,
@@ -350,10 +374,6 @@ button:disabled {
   letter-spacing: -0.03em;
 }
 
-.comparison-card {
-  padding: 1rem;
-}
-
 .comparison-note,
 .explanation-subcopy,
 .navigation-empty {
@@ -363,23 +383,21 @@ button:disabled {
 
 .comparison-grid {
   grid-template-columns: repeat(2, 1fr);
-  margin: 0.5rem 0 0.7rem;
+  margin: 0.45rem 0 0.55rem;
 }
 
 .comparison-primary {
   border-color: rgba(29, 78, 216, 0.28);
 }
 
+.comparison-card strong {
+  font-size: 1rem;
+}
+
 .explanation-subcopy {
-  margin-top: 0.45rem;
+  margin-top: 0.3rem;
 }
 
-.navigation-card {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.navigation-header,
 .navigation-meta,
 .navigation-actions,
 .navigation-step {
@@ -387,7 +405,6 @@ button:disabled {
   gap: 0.75rem;
 }
 
-.navigation-header,
 .navigation-meta {
   justify-content: space-between;
   align-items: flex-start;
@@ -400,11 +417,15 @@ button:disabled {
 
 .navigation-step {
   align-items: center;
+  padding: 0.85rem;
+  border-radius: 16px;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
 }
 
 .navigation-step strong {
   display: block;
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   line-height: 1.35;
 }
 
@@ -417,6 +438,11 @@ button:disabled {
 
 .navigation-actions {
   flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.navigation-actions.compact button {
+  min-height: 46px;
 }
 
 .nav-status-pill {
@@ -441,8 +467,9 @@ button:disabled {
 }
 
 .step-list {
+  position: relative;
   display: grid;
-  gap: 0.7rem;
+  gap: 0.55rem;
   padding-left: 0;
   margin: 0;
   list-style: none;
@@ -453,28 +480,62 @@ button:disabled {
   grid-template-columns: auto 1fr;
   gap: 0.75rem;
   align-items: start;
+  position: relative;
+}
+
+.step-list li::before {
+  content: "";
+  position: absolute;
+  left: 0.92rem;
+  top: 2.1rem;
+  bottom: -0.8rem;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.step-list li:last-child::before {
+  display: none;
 }
 
 .step-marker {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 1.85rem;
+  height: 1.85rem;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
   background: var(--ink);
   color: white;
   font-weight: 800;
-  margin-top: 0.35rem;
+  margin-top: 0.25rem;
+  position: relative;
+  z-index: 1;
 }
 
 .step-card {
-  padding: 0.95rem;
+  padding: 0.85rem 0.9rem;
 }
 
 .step-card strong {
   display: block;
-  font-size: 0.98rem;
+  margin-top: 0.45rem;
+  font-size: 0.95rem;
   line-height: 1.35;
+}
+
+.step-card p {
+  margin: 0.35rem 0 0;
+}
+
+.step-card-topline,
+.steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.step-card-topline {
+  justify-content: flex-start;
 }
 
 .message.error {
