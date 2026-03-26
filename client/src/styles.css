@@ -321,7 +321,9 @@ button:disabled {
 
 .stats,
 .mini-cards,
-.scenario-strip {
+.scenario-strip,
+.highlights-strip,
+.comparison-grid {
   display: grid;
   gap: 1rem;
 }
@@ -350,6 +352,23 @@ button:disabled {
 .stats {
   grid-template-columns: repeat(3, 1fr);
   margin: 1.35rem 0;
+}
+
+.highlights-strip {
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 1rem;
+}
+
+.highlights-strip article,
+.comparison-card,
+.comparison-grid article {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.highlights-strip article {
+  padding: 0.9rem 1rem;
 }
 
 .stats article,
@@ -445,6 +464,48 @@ button:disabled {
   display: block;
   font-size: 1rem;
   line-height: 1.35;
+}
+
+.comparison-card {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.comparison-grid {
+  grid-template-columns: repeat(2, 1fr);
+  margin: 0.5rem 0 0.75rem;
+}
+
+.comparison-grid article {
+  padding: 0.9rem 1rem;
+}
+
+.comparison-grid span,
+.highlights-strip span {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.comparison-grid strong,
+.highlights-strip strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.05rem;
+}
+
+.comparison-primary {
+  border-color: rgba(29, 78, 216, 0.28);
+}
+
+.comparison-note,
+.explanation-subcopy {
+  margin: 0;
+  color: var(--muted);
+}
+
+.explanation-subcopy {
+  margin-top: 0.6rem;
 }
 
 .field-hint {
@@ -579,7 +640,9 @@ button:disabled {
   .hero,
   .content-grid,
   .stats,
-  .scenario-strip {
+  .scenario-strip,
+  .highlights-strip,
+  .comparison-grid {
     grid-template-columns: 1fr;
   }
 

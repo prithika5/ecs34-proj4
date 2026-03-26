@@ -83,6 +83,25 @@ function explainRoute(route, optimization) {
   return `${toTitleCase(optimization)} mode leans on ${dominantMode} segments. ${tradeoff}`;
 }
 
+function buildHighlights(steps, optimization) {
+  const modeCount = steps.reduce((count, step) => {
+    count[step.mode] = (count[step.mode] || 0) + 1;
+    return count;
+  }, {});
+
+  const dominantMode = Object.entries(modeCount).sort((left, right) => right[1] - left[1])[0]?.[0] || "walk";
+
+  return {
+    dominantMode,
+    stepCount: steps.length,
+    tradeoffLabel: optimization === "fastest" ? "Saves time" : "Cuts distance",
+    campusFeel:
+      optimization === "fastest"
+        ? "Shuttle and bike links do most of the heavy lifting on this trip."
+        : "This route stays compact and campus-centric even if it takes longer."
+  };
+}
+
 export function computeRoute({ start, end, optimization }) {
   if (!graph.nodes[start] || !graph.nodes[end]) {
     throw createApiError(400, "INVALID_LOCATION", "Start and end must be valid RouteHacker locations.");
@@ -156,7 +175,7 @@ export function computeRoute({ start, end, optimization }) {
 
   const routeSteps = steps.map((step, index) => ({
     index: index + 1,
-    instruction: `Take the ${step.label} to ${graph.nodes[step.to].label}.`,
+    instruction: `Take the ${step.label} from ${graph.nodes[step.from].label} to ${graph.nodes[step.to].label}.`,
     from: graph.nodes[step.from].label,
     to: graph.nodes[step.to].label,
     mode: step.mode,
@@ -169,9 +188,12 @@ export function computeRoute({ start, end, optimization }) {
     optimization,
     totals: {
       distance: formatDistance(totals.distance),
-      time: formatTime(totals.time)
+      time: formatTime(totals.time),
+      rawDistance: Number(totals.distance.toFixed(2)),
+      rawTime: totals.time
     },
     steps: routeSteps,
-    explanation: explainRoute({ steps: routeSteps }, optimization)
+    explanation: explainRoute({ steps: routeSteps }, optimization),
+    highlights: buildHighlights(routeSteps, optimization)
   };
 }

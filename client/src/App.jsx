@@ -31,6 +31,7 @@ const defaultForm = {
 export default function App() {
   const [formState, setFormState] = useState(defaultForm);
   const [route, setRoute] = useState(null);
+  const [comparisonRoute, setComparisonRoute] = useState(null);
   const [error, setError] = useState("");
   const [validationError, setValidationError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,7 @@ export default function App() {
 
     if (formState.start === formState.end) {
       setRoute(null);
+      setComparisonRoute(null);
       setValidationError("Start and end need to be different so the route tradeoff is meaningful.");
       return;
     }
@@ -58,10 +60,20 @@ export default function App() {
     setLoading(true);
 
     try {
-      const nextRoute = await requestRoute(formState);
+      const alternativeOptimization = formState.optimization === "fastest" ? "shortest" : "fastest";
+      const [nextRoute, alternateRoute] = await Promise.all([
+        requestRoute(formState),
+        requestRoute({
+          ...formState,
+          optimization: alternativeOptimization
+        })
+      ]);
+
       setRoute(nextRoute);
+      setComparisonRoute(alternateRoute);
     } catch (requestError) {
       setRoute(null);
+      setComparisonRoute(null);
       setError(requestError.message);
     } finally {
       setLoading(false);
@@ -114,7 +126,13 @@ export default function App() {
       </section>
 
       <section className="content-grid">
-        <RouteResults route={route} error={error} loading={loading} formState={formState} />
+        <RouteResults
+          route={route}
+          comparisonRoute={comparisonRoute}
+          error={error}
+          loading={loading}
+          formState={formState}
+        />
 
         <aside className="notes-panel">
           <p className="eyebrow">Why it works</p>
@@ -133,6 +151,11 @@ export default function App() {
               <CuteCampusIcon variant="bike" className="mini-campus-icon icon-wiggle" />
               <strong>Expandable engine</strong>
               <p>Seed graph data can grow into larger neighborhood, campus, or transit route maps.</p>
+            </article>
+            <article>
+              <CuteCampusIcon variant="union" className="mini-campus-icon icon-float" />
+              <strong>Instant comparison</strong>
+              <p>The alternate optimization appears beside the selected route so tradeoffs are obvious immediately.</p>
             </article>
           </div>
           <div className="product-note">

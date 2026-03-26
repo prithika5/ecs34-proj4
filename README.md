@@ -8,6 +8,7 @@ RouteHacker is a portfolio-style routing MVP built on top of this repository's t
 - Express backend in `server/`
 - Deterministic shortest-vs-fastest routing with an in-house graph engine
 - Route summaries, step-by-step directions, and explanation copy
+- Compare view for shortest vs fastest decision-making
 - Validation for bad requests, same-point trips, and disconnected routes
 - Backend and frontend tests for the core flows
 - Dev container support for both the legacy C++ toolchain and the new web stack
@@ -51,6 +52,7 @@ make
 ### Web App
 
 - `client/`: React UI for route input, loading states, result cards, and product framing
+- `client/public/`: logo-driven app assets including favicon/app icon files
 - `server/`: Express API plus the deterministic routing engine
 - `shared/`: location and optimization metadata shared across the stack
 
@@ -80,6 +82,8 @@ The MVP uses a seeded campus-style graph with weighted edges for:
 - travel mode
 
 The shortest route minimizes distance. The fastest route minimizes total travel time. Because the graph mixes walking, biking, and shuttle edges, those two strategies can produce meaningfully different outputs for the same start and end points.
+
+The current UI also surfaces the alternate optimization as a comparison card so the user can quickly judge the tradeoff between compact distance and lower travel time.
 
 ## API Contract
 
@@ -122,6 +126,7 @@ Frontend coverage currently includes:
 - loading state
 - success render
 - API error render
+- compare-mode render
 
 ## Deployment
 
@@ -167,6 +172,7 @@ For local development, the API still defaults to permissive CORS so the dev cont
 - `research_park` is intentionally disconnected in the seed graph so the API can exercise the no-route-found path.
 - Styling uses plain CSS rather than Tailwind to keep the MVP lightweight inside this mixed-language repository.
 - Deployment now supports an environment-configured frontend API base URL and optional production CORS restriction.
+- The favicon and app icon assets are derived from the provided RouteHacker logo.
 
 #### Prompt 7: Implementing Dijkstra's Algorithm
 

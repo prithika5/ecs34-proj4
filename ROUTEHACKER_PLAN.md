@@ -2,9 +2,9 @@
 
 ## Status Snapshot
 
-- Completed phases: `Phase 0`, `Phase 1`, `Phase 2`, `Phase 3`, `Phase 4`, `Phase 5`, `Phase 7`
-- Partially completed phases: `Phase 6`, `Phase 8`
-- Current priority: finish product polish, then deployment and final portfolio presentation
+- Completed phases: `Phase 0`, `Phase 1`, `Phase 2`, `Phase 3`, `Phase 4`, `Phase 5`, `Phase 6`, `Phase 7`
+- Partially completed phases: `Phase 8`
+- Current priority: complete hosted deployment and add final portfolio assets
 
 ## Current Repo Reality
 
@@ -141,22 +141,17 @@ Deliverable:
 
 ## Phase 6: Product Polish
 
-Status: `Partially Completed`
+Status: `Completed`
 
 - [x] Improve typography, spacing, and visual hierarchy.
 - [x] Add small feature summary section and product framing copy.
 - [x] Make empty state feel intentional, not unfinished.
 - [x] Refine copywriting and error messages.
-- [ ] Ensure the app feels like a startup MVP, not a class demo.
-
-Remaining focus:
-
-- tighten final visual polish after deployment target is chosen
-- add screenshots and a more final product narrative once hosted
+- [x] Ensure the app feels like a startup MVP, not a class demo.
 
 Deliverable:
 
-- [ ] portfolio-grade presentation quality
+- [x] portfolio-grade presentation quality
 
 ## Phase 7: Testing
 
@@ -179,7 +174,7 @@ Status: `Partially Completed`
 - [x] Add deployment instructions.
 - [ ] Deploy frontend to Vercel.
 - [ ] Deploy backend to Render.
-- [ ] Add final repo polish with screenshots, demo links, and clear folder overview.
+- [~] Add final repo polish with screenshots, demo links, and clear folder overview.
 
 Deliverable:
 
@@ -194,10 +189,9 @@ Deliverable:
 
 ## Recommended Execution Order From Here
 
-1. Finalize the remaining product polish.
-2. Add deployment configuration and instructions.
-3. Deploy the frontend and backend.
-4. Add screenshots, demo links, and final portfolio framing.
+1. Deploy the frontend and backend.
+2. Add screenshots and demo links from the live app.
+3. Update the README with hosted URLs and any final repo framing.
 
 ## Success Criteria
 

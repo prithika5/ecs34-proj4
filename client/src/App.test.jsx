@@ -26,31 +26,54 @@ describe("RouteHacker app", () => {
   });
 
   it("shows loading and renders results after a successful API response", async () => {
-    let resolveFetch;
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveFetch = resolve;
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          summary: "AggieWorks Studio to West Village",
+          optimization: "shortest",
+          totals: { distance: "2.50 mi", time: "18 min", rawDistance: 2.5, rawTime: 18 },
+          explanation: "Shortest mode leans on walk segments.",
+          highlights: { dominantMode: "walk", stepCount: 3, tradeoffLabel: "Cuts distance", campusFeel: "Walk-heavy." },
+          steps: [
+            {
+              index: 1,
+              instruction: "Take the pedestrian spine from AggieWorks Studio to Memorial Union.",
+              mode: "walk",
+              distance: "0.60 mi",
+              time: "12 min"
+            }
+          ]
         })
-    );
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          summary: "AggieWorks Studio to West Village",
+          optimization: "fastest",
+          totals: { distance: "2.95 mi", time: "10 min", rawDistance: 2.95, rawTime: 10 },
+          explanation: "Fastest mode leans on shuttle segments.",
+          highlights: { dominantMode: "shuttle", stepCount: 2, tradeoffLabel: "Saves time", campusFeel: "Shuttle-heavy." },
+          steps: [
+            {
+              index: 1,
+              instruction: "Take the campus shuttle express from AggieWorks Studio to Silo Transit Terminal.",
+              mode: "shuttle",
+              distance: "1.20 mi",
+              time: "4 min"
+            }
+          ]
+        })
+      });
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: /See best route/i }));
 
     expect(screen.getByText(/Checking the best path now/i)).toBeInTheDocument();
 
-    resolveFetch({
-      ok: true,
-      json: async () => ({
-        summary: "AggieWorks Studio to West Village",
-        optimization: "fastest",
-        totals: { distance: "2.95 mi", time: "10 min" },
-        explanation: "Fastest mode leans on shuttle segments.",
-        steps: [{ index: 1, instruction: "Take the shuttle.", mode: "shuttle", distance: "1.20 mi", time: "4 min" }]
-      })
-    });
     expect(await screen.findByText(/AggieWorks Studio to West Village/i)).toBeInTheDocument();
-    expect(screen.getByText(/Fastest mode leans on shuttle segments/i)).toBeInTheDocument();
+    expect(screen.getByText(/Shortest mode leans on walk segments/i)).toBeInTheDocument();
+    expect(screen.getByText(/Compare modes/i)).toBeInTheDocument();
   });
 
   it("renders API errors", async () => {

@@ -17,7 +17,7 @@ function getModeIcon(mode) {
   return "walk";
 }
 
-export default function RouteResults({ route, error, loading, formState }) {
+export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
   const startLocation = getLocationOptionById(formState?.start);
   const endLocation = getLocationOptionById(formState?.end);
 
@@ -97,10 +97,54 @@ export default function RouteResults({ route, error, loading, formState }) {
           <strong>{route.optimization}</strong>
         </article>
       </div>
+      {route.highlights ? (
+        <div className="highlights-strip">
+          <article>
+            <span>Dominant mode</span>
+            <strong>{formatMode(route.highlights.dominantMode)}</strong>
+          </article>
+          <article>
+            <span>Step count</span>
+            <strong>{route.highlights.stepCount}</strong>
+          </article>
+          <article>
+            <span>Route read</span>
+            <strong>{route.highlights.tradeoffLabel}</strong>
+          </article>
+        </div>
+      ) : null}
+
+      {comparisonRoute ? (
+        <div className="comparison-card">
+          <p className="eyebrow">Compare modes</p>
+          <div className="comparison-grid">
+            <article className="comparison-primary">
+              <span>Selected</span>
+              <strong>{formatMode(route.optimization)}</strong>
+              <p>
+                {route.totals.distance} · {route.totals.time}
+              </p>
+            </article>
+            <article>
+              <span>Alternative</span>
+              <strong>{formatMode(comparisonRoute.optimization)}</strong>
+              <p>
+                {comparisonRoute.totals.distance} · {comparisonRoute.totals.time}
+              </p>
+            </article>
+          </div>
+          <p className="comparison-note">
+            {route.optimization === "fastest"
+              ? `Fastest saves time, while ${comparisonRoute.optimization} keeps the trip tighter on mileage.`
+              : `Shortest reduces mileage, while ${comparisonRoute.optimization} gets you there faster.`}
+          </p>
+        </div>
+      ) : null}
 
       <div className="explanation-card">
         <p className="eyebrow">Explanation engine</p>
         <p>{route.explanation}</p>
+        {route.highlights ? <p className="explanation-subcopy">{route.highlights.campusFeel}</p> : null}
       </div>
 
       <ol className="step-list">
