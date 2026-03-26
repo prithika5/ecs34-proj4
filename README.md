@@ -2,6 +2,11 @@
 
 RouteHacker is a portfolio-style routing MVP built on top of this repository's transportation-planning background. The original C++ planner remains in place, and a new React + Express monorepo now sits alongside it for a modern product-facing demo.
 
+## Live Demo
+
+- Frontend: `https://routehacker.vercel.app`
+- Backend API: `https://routehacker-api.onrender.com`
+
 ## What Ships In This MVP
 
 - React + Vite frontend in `client/`
@@ -173,91 +178,6 @@ For local development, the API still defaults to permissive CORS so the dev cont
 - Styling uses plain CSS rather than Tailwind to keep the MVP lightweight inside this mixed-language repository.
 - Deployment now supports an environment-configured frontend API base URL and optional production CORS restriction.
 - The favicon and app icon assets are derived from the provided RouteHacker logo.
-
-#### Prompt 7: Implementing Dijkstra's Algorithm
-
-**Question:**
-How did I implement `FindShortestPath()`?
-
-**Response:**
-Use three vectors:
-- `w` for shortest known distances
-- `p` for previous vertex
-- `v` for visited flags
-Initialize every distance to infinity.
-Set the source distance to 0.
-Repeatedly choose the unvisited vertex with the smallest distance.
-Relax all outgoing edges from that vertex.
-Stop when:
-- there are no more reachable vertices
-- or the destination has been reached
-
-**Implementation:**
-
-```cpp
-std::vector<double> w;
-w.resize(DVertices.size(),std::numeric_limits<double>::max());
-
-std::vector<TVertexID> p;
-p.resize(DVertices.size(),std::numeric_limits<TVertexID>::max());
-
-std::vector<bool> v;
-v.resize(DVertices.size(),false);
-
-w[src] = 0;
-
-for(std::size_t i = 0; i < DVertices.size(); i++){
-    TVertexID c = std::numeric_limits<TVertexID>::max();
-    double m = std::numeric_limits<double>::max();
-
-    for(TVertexID j = 0; j < DVertices.size(); j++){
-        if(!v[j] && w[j] < m){
-            m = w[j];
-            c = j;
-        }
-    }
-
-    if(c == std::numeric_limits<TVertexID>::max()){
-        break;
-    }
-
-    v[c] = true;
-
-    if(c == dest){
-        break;
-    }
-
-    for(std::size_t j = 0; j < DVertices[c]->DEdges.size(); j++){
-        double ew = DVertices[c]->DEdges[j].first;
-        TVertexID n = DVertices[c]->DEdges[j].second;
-
-        if(!v[n] && w[c] != std::numeric_limits<double>::max() && w[c] + ew < w[n]){
-            w[n] = w[c] + ew;
-            p[n] = c;
-        }
-    }
-}
-```
-
-#### Prompt 8: Reconstructing The Final Path
-
-**Question:**
-After Dijkstra finishes, how do I build the final path?
-
-**Response:**
-First check whether the destination is reachable.
-If not reachable, return `NoPathExists`.
-Otherwise, start from `dest` and move backward using the previous array.
-Store the vertices in reverse order first.
-Then push them into `path` in forward order.
-If backward tracing fails:
-- Clear `path`
-- Return `NoPathExists`
-
-**Implementation:**
-
-```cpp
-if(w[dest] == std::numeric_limits<double>::max()){
     return NoPathExists;
 }
 

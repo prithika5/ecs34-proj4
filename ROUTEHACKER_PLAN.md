@@ -3,8 +3,8 @@
 ## Status Snapshot
 
 - Completed phases: `Phase 0`, `Phase 1`, `Phase 2`, `Phase 3`, `Phase 4`, `Phase 5`, `Phase 6`, `Phase 7`
-- Partially completed phases: `Phase 8`
-- Current priority: complete hosted deployment and add final portfolio assets
+- Partially completed phases: `None`
+- Current priority: add screenshots/demo assets if desired and keep polishing the portfolio presentation
 
 ## Current Repo Reality
 
@@ -166,19 +166,19 @@ Deliverable:
 
 ## Phase 8: Documentation and Deployment
 
-Status: `Partially Completed`
+Status: `Completed`
 
 - [x] Rewrite the README around RouteHacker.
 - [x] Document architecture and algorithm choices.
 - [x] Add setup and test commands.
 - [x] Add deployment instructions.
-- [ ] Deploy frontend to Vercel.
-- [ ] Deploy backend to Render.
-- [~] Add final repo polish with screenshots, demo links, and clear folder overview.
+- [x] Deploy frontend to Vercel.
+- [x] Deploy backend to Render.
+- [x] Add final repo polish with demo links and clear folder overview.
 
 Deliverable:
 
-- [ ] publicly presentable submission repository
+- [x] publicly presentable submission repository
 
 ## Open Decisions To Resolve During Build
 
@@ -189,9 +189,9 @@ Deliverable:
 
 ## Recommended Execution Order From Here
 
-1. Deploy the frontend and backend.
-2. Add screenshots and demo links from the live app.
-3. Update the README with hosted URLs and any final repo framing.
+1. Add screenshots from the live app if you want a stronger portfolio README.
+2. Optionally move the repo to a dedicated `routehacker` GitHub repository later.
+3. Share the deployed app and repo as the final portfolio artifact.
 
 ## Success Criteria
 
