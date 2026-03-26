@@ -10,7 +10,7 @@ afterEach(() => {
 describe("RouteHacker app", () => {
   it("renders the route form", () => {
     render(<App />);
-    expect(screen.getByText(/Fast to scan. Easy to trust. Built for motion/i)).toBeInTheDocument();
+    expect(screen.getByText(/Find the shortest or fastest path across Davis/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /See best route/i })).toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe("RouteHacker app", () => {
 
     expect(screen.getByText(/Checking the best path now/i)).toBeInTheDocument();
 
-    expect(await screen.findByText(/AggieWorks Studio to West Village/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /AggieWorks Studio to West Village/i })).toBeInTheDocument();
     expect(screen.getByText(/Shortest mode leans on walk segments/i)).toBeInTheDocument();
     expect(screen.getByText(/Compare modes/i)).toBeInTheDocument();
   });

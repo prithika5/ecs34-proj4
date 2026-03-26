@@ -67,22 +67,9 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
         </div>
         <span className={`mode-pill ${route.optimization}`}>{formatMode(route.optimization)}</span>
       </div>
-      <div className="route-places">
-        <article>
-          <CuteCampusIcon variant={startLocation?.icon} className="preview-campus-icon icon-bob" />
-          <div>
-            <span>Start</span>
-            <strong>{startLocation?.label}</strong>
-          </div>
-        </article>
-        <article>
-          <CuteCampusIcon variant={endLocation?.icon} className="preview-campus-icon icon-float" />
-          <div>
-            <span>Destination</span>
-            <strong>{endLocation?.label}</strong>
-          </div>
-        </article>
-      </div>
+      <p className="route-inline-summary">
+        {startLocation?.label} to {endLocation?.label}
+      </p>
       <div className="stats">
         <article>
           <span>Total distance</span>
@@ -97,23 +84,6 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <strong>{route.optimization}</strong>
         </article>
       </div>
-      {route.highlights ? (
-        <div className="highlights-strip">
-          <article>
-            <span>Dominant mode</span>
-            <strong>{formatMode(route.highlights.dominantMode)}</strong>
-          </article>
-          <article>
-            <span>Step count</span>
-            <strong>{route.highlights.stepCount}</strong>
-          </article>
-          <article>
-            <span>Route read</span>
-            <strong>{route.highlights.tradeoffLabel}</strong>
-          </article>
-        </div>
-      ) : null}
-
       {comparisonRoute ? (
         <div className="comparison-card">
           <p className="eyebrow">Compare modes</p>
@@ -152,7 +122,7 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <li key={step.index}>
             <span className="step-marker">{step.index}</span>
             <div className="step-card">
-              <CuteCampusIcon variant={getModeIcon(step.mode)} className="step-campus-icon icon-bob" />
+              <CuteCampusIcon variant={getModeIcon(step.mode)} className="step-campus-icon" />
               <strong>{step.instruction}</strong>
               <p>
                 {formatMode(step.mode)} · {step.distance} · {step.time}
