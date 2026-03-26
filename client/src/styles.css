@@ -43,6 +43,18 @@ input {
   margin-bottom: 1rem;
 }
 
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.brand-logo {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+}
+
 .brand-kicker,
 .brand-subtitle {
   margin: 0;
@@ -169,6 +181,61 @@ h2 {
   display: grid;
   gap: 1.1rem;
   align-content: start;
+}
+
+.selected-route-preview,
+.route-places {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.selected-route-preview article,
+.route-places article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+}
+
+.selected-route-preview span,
+.route-places span {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.selected-route-preview strong,
+.route-places strong {
+  display: block;
+  font-size: 0.98rem;
+  letter-spacing: -0.02em;
+}
+
+.preview-campus-icon,
+.mini-campus-icon,
+.step-campus-icon {
+  flex: 0 0 auto;
+}
+
+.preview-campus-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.mini-campus-icon {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 0.4rem;
+}
+
+.step-campus-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.5rem;
 }
 
 .form-intro h2 {
@@ -428,6 +495,21 @@ button:disabled {
   margin-top: 1rem;
 }
 
+.icon-float {
+  animation: iconFloat 3.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.icon-bob {
+  animation: iconBob 2.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.icon-wiggle {
+  animation: iconWiggle 3.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -438,6 +520,43 @@ button:disabled {
   50% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes iconFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes iconBob {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+
+  50% {
+    transform: rotate(-2deg) translateY(-3px);
+  }
+}
+
+@keyframes iconWiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(3deg);
+  }
+
+  75% {
+    transform: rotate(-3deg);
   }
 }
 

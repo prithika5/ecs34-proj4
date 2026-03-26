@@ -1,6 +1,7 @@
 import { useState } from "react";
 import RouteForm from "./components/RouteForm.jsx";
 import RouteResults from "./components/RouteResults.jsx";
+import CuteCampusIcon from "./components/CuteCampusIcon.jsx";
 import { requestRoute } from "./lib/api.js";
 
 const highlightScenarios = [
@@ -70,9 +71,12 @@ export default function App() {
   return (
     <main className="page-shell">
       <header className="app-header">
-        <div>
-          <p className="brand-kicker">RouteHacker</p>
-          <p className="brand-subtitle">Routing intelligence with a premium ride-booking feel.</p>
+        <div className="brand-lockup">
+          <img src="/logo.png" alt="RouteHacker logo" className="brand-logo" />
+          <div>
+            <p className="brand-kicker">RouteHacker</p>
+            <p className="brand-subtitle">Routing intelligence with a premium Davis ride-booking feel.</p>
+          </div>
         </div>
       </header>
 
@@ -92,6 +96,7 @@ export default function App() {
           <div className="scenario-strip">
             {highlightScenarios.map((scenario) => (
               <article key={scenario.title}>
+                <CuteCampusIcon variant="cow_lab" className="mini-campus-icon icon-float" />
                 <p>{scenario.accent}</p>
                 <strong>{scenario.title}</strong>
                 <span>{scenario.copy}</span>
@@ -109,7 +114,7 @@ export default function App() {
       </section>
 
       <section className="content-grid">
-        <RouteResults route={route} error={error} loading={loading} />
+        <RouteResults route={route} error={error} loading={loading} formState={formState} />
 
         <aside className="notes-panel">
           <p className="eyebrow">Why it works</p>
@@ -120,10 +125,12 @@ export default function App() {
           </p>
           <div className="mini-cards">
             <article>
+              <CuteCampusIcon variant="shuttle" className="mini-campus-icon icon-bob" />
               <strong>Practical feedback</strong>
               <p>Large controls, simple route summaries, and clear validation keep the flow calm and fast.</p>
             </article>
             <article>
+              <CuteCampusIcon variant="bike" className="mini-campus-icon icon-wiggle" />
               <strong>Expandable engine</strong>
               <p>Seed graph data can grow into larger neighborhood, campus, or transit route maps.</p>
             </article>

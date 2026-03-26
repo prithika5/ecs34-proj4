@@ -1,8 +1,26 @@
+import { getLocationOptionById } from "@shared/routeOptions.js";
+import CuteCampusIcon from "./CuteCampusIcon.jsx";
+
 function formatMode(mode) {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
-export default function RouteResults({ route, error, loading }) {
+function getModeIcon(mode) {
+  if (mode === "bike") {
+    return "bike";
+  }
+
+  if (mode === "shuttle") {
+    return "shuttle";
+  }
+
+  return "walk";
+}
+
+export default function RouteResults({ route, error, loading, formState }) {
+  const startLocation = getLocationOptionById(formState?.start);
+  const endLocation = getLocationOptionById(formState?.end);
+
   if (loading) {
     return (
       <section className="results-panel loading">
@@ -49,6 +67,22 @@ export default function RouteResults({ route, error, loading }) {
         </div>
         <span className={`mode-pill ${route.optimization}`}>{formatMode(route.optimization)}</span>
       </div>
+      <div className="route-places">
+        <article>
+          <CuteCampusIcon variant={startLocation?.icon} className="preview-campus-icon icon-bob" />
+          <div>
+            <span>Start</span>
+            <strong>{startLocation?.label}</strong>
+          </div>
+        </article>
+        <article>
+          <CuteCampusIcon variant={endLocation?.icon} className="preview-campus-icon icon-float" />
+          <div>
+            <span>Destination</span>
+            <strong>{endLocation?.label}</strong>
+          </div>
+        </article>
+      </div>
       <div className="stats">
         <article>
           <span>Total distance</span>
@@ -74,6 +108,7 @@ export default function RouteResults({ route, error, loading }) {
           <li key={step.index}>
             <span className="step-marker">{step.index}</span>
             <div className="step-card">
+              <CuteCampusIcon variant={getModeIcon(step.mode)} className="step-campus-icon icon-bob" />
               <strong>{step.instruction}</strong>
               <p>
                 {formatMode(step.mode)} · {step.distance} · {step.time}
