@@ -1,18 +1,30 @@
 // For format details, see https://aka.ms/devcontainer.json
 {
-	"name": "C++ Project 2",
+	"name": "RouteHacker Dev",
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
-
+	"forwardPorts": [5173, 3000],
+	"portsAttributes": {
+		"5173": {
+			"label": "RouteHacker client",
+			"onAutoForward": "notify"
+		},
+		"3000": {
+			"label": "RouteHacker server",
+			"onAutoForward": "notify"
+		}
+	},
+	"postCreateCommand": "npm install",
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-vscode.cpptools"
+				"ms-vscode.cpptools",
+				"dbaeumer.vscode-eslint",
+				"esbenp.prettier-vscode",
+				"vitest.explorer",
+				"ms-vscode.vscode-typescript-next"
 			]
 		}
 	}
-
-	// No postCreateCommand on purpose.
-	// We'll run make / tests manually to avoid failures on container startup.
 }

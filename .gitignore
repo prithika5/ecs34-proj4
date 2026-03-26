@@ -21,3 +21,15 @@ run_*
 
 # Mac junk
 .DS_Store
+
+# Node / web app artifacts
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+server/dist/
+coverage/
+.vite/
+*.tsbuildinfo
+.env
+.env.*

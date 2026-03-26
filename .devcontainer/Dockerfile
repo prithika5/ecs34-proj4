@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     locales \
+    curl \
     build-essential \
     cmake \
     lcov \
@@ -19,7 +20,9 @@ RUN apt-get update && \
     xmldiff \
     less \
     vim \
-    sudo  && \
+    sudo && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
     cmake -S /usr/src/googletest -B /tmp/googletest-build && \
     cmake --build /tmp/googletest-build && \
     cp /tmp/googletest-build/lib/libgtest*.a /usr/local/lib/ && \
@@ -31,7 +34,8 @@ RUN apt-get update && \
     locale-gen && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/\* /tmp/\* /var/tmp/* && \
-    useradd -m docker 
+    npm install -g npm@latest && \
+    useradd -m docker
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
