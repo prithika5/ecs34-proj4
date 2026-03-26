@@ -3,6 +3,24 @@ import RouteForm from "./components/RouteForm.jsx";
 import RouteResults from "./components/RouteResults.jsx";
 import { requestRoute } from "./lib/api.js";
 
+const highlightScenarios = [
+  {
+    title: "Fast commute",
+    copy: "Use shuttle-heavy routing when travel time matters more than mileage.",
+    accent: "Shuttle bias"
+  },
+  {
+    title: "Compact path",
+    copy: "Keep the route tight when the shortest physical distance is the real goal.",
+    accent: "Distance bias"
+  },
+  {
+    title: "Transparent tradeoffs",
+    copy: "Every result explains why the engine preferred one trip over another.",
+    accent: "Explainability"
+  }
+];
+
 const defaultForm = {
   start: "aggie_works",
   end: "west_village",
@@ -64,6 +82,15 @@ export default function App() {
             <span>Deterministic explanations</span>
             <span>Responsive route summaries</span>
           </div>
+          <div className="scenario-strip">
+            {highlightScenarios.map((scenario) => (
+              <article key={scenario.title}>
+                <p>{scenario.accent}</p>
+                <strong>{scenario.title}</strong>
+                <span>{scenario.copy}</span>
+              </article>
+            ))}
+          </div>
         </div>
         <RouteForm
           formState={formState}
@@ -93,6 +120,13 @@ export default function App() {
               <strong>Extensible graph</strong>
               <p>Seed data is easy to expand into neighborhood, campus, or transit-focused route maps.</p>
             </article>
+          </div>
+          <div className="product-note">
+            <p className="eyebrow">Launch posture</p>
+            <p>
+              Dev-container ready, tested on both client and server, and structured so Vercel and Render deployment can
+              be added without reshaping the app.
+            </p>
           </div>
         </aside>
       </section>

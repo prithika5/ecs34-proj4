@@ -1,3 +1,7 @@
+function formatMode(mode) {
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
+}
+
 export default function RouteResults({ route, error, loading }) {
   if (loading) {
     return <section className="results-panel loading">Crunching graph weights and route tradeoffs...</section>;
@@ -29,7 +33,13 @@ export default function RouteResults({ route, error, loading }) {
   return (
     <section className="results-panel">
       <p className="eyebrow">Computed route</p>
-      <h2>{route.summary}</h2>
+      <div className="result-heading">
+        <div>
+          <h2>{route.summary}</h2>
+          <p className="result-subtitle">A deterministic {route.optimization} recommendation built from the current route graph.</p>
+        </div>
+        <span className={`mode-pill ${route.optimization}`}>{formatMode(route.optimization)}</span>
+      </div>
       <div className="stats">
         <article>
           <span>Total distance</span>
@@ -53,10 +63,11 @@ export default function RouteResults({ route, error, loading }) {
       <ol className="step-list">
         {route.steps.map((step) => (
           <li key={step.index}>
+            <span className="step-marker">{step.index}</span>
             <div>
               <strong>{step.instruction}</strong>
               <p>
-                {step.mode} · {step.distance} · {step.time}
+                {formatMode(step.mode)} · {step.distance} · {step.time}
               </p>
             </div>
           </li>
