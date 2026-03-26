@@ -26,6 +26,12 @@ describe("RouteHacker app", () => {
   });
 
   it("shows loading and renders results after a successful API response", async () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (success) => success({ coords: { latitude: 38.544, longitude: -121.740 } })
+      }
+    });
+
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce({
         ok: true,
@@ -74,6 +80,10 @@ describe("RouteHacker app", () => {
     expect(await screen.findByRole("heading", { name: /AggieWorks Studio to West Village/i })).toBeInTheDocument();
     expect(screen.getByText(/Shortest mode leans on walk segments/i)).toBeInTheDocument();
     expect(screen.getByText(/Compare modes/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Start navigation/i }));
+    expect(screen.getByText(/Guided navigation is active/i)).toBeInTheDocument();
+    expect(screen.getByText(/Location ready near/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Finish navigation|Next step/i }));
   });
 
   it("renders API errors", async () => {

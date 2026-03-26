@@ -116,7 +116,8 @@ input {
 }
 
 h1,
-h2 {
+h2,
+h3 {
   margin: 0;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -130,6 +131,11 @@ h1 {
 
 h2 {
   font-size: clamp(1.8rem, 5vw, 2.75rem);
+  font-weight: 800;
+}
+
+h3 {
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
   font-weight: 800;
 }
 
@@ -271,6 +277,24 @@ button:disabled {
   cursor: wait;
 }
 
+.secondary-button,
+.ghost-button {
+  min-height: 52px;
+  box-shadow: none;
+}
+
+.secondary-button {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+
+.ghost-button {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
 .stats,
 .comparison-grid {
   display: grid;
@@ -290,7 +314,8 @@ button:disabled {
 }
 
 .stats article,
-.explanation-card {
+.explanation-card,
+.navigation-card {
   padding: 1rem;
 }
 
@@ -426,6 +451,80 @@ button:disabled {
   margin-top: 0.6rem;
 }
 
+.navigation-card {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  margin: 1rem 0;
+}
+
+.navigation-header,
+.navigation-actions,
+.navigation-meta,
+.navigation-step {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.navigation-header,
+.navigation-meta {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.navigation-meta {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.navigation-step {
+  align-items: center;
+  padding: 1rem 0;
+}
+
+.navigation-step strong {
+  display: block;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.navigation-step-icon {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+}
+
+.navigation-actions {
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.nav-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border: 1px solid var(--line);
+}
+
+.nav-status-pill.live {
+  background: rgba(29, 78, 216, 0.08);
+  color: #163da7;
+}
+
+.nav-status-pill.idle {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.navigation-empty {
+  margin: 1rem 0 0;
+}
+
 .field-hint {
   display: flex;
   align-items: flex-start;
@@ -552,6 +651,12 @@ button:disabled {
   .stats,
   .comparison-grid {
     grid-template-columns: 1fr;
+  }
+
+  .navigation-header,
+  .navigation-meta,
+  .navigation-step {
+    flex-direction: column;
   }
 
   h1 {

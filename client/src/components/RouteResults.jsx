@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { getLocationOptionById } from "@shared/routeOptions.js";
 import CuteCampusIcon from "./CuteCampusIcon.jsx";
 
@@ -20,6 +21,40 @@ function getModeIcon(mode) {
 export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
   const startLocation = getLocationOptionById(formState?.start);
   const endLocation = getLocationOptionById(formState?.end);
+  const [navigationActive, setNavigationActive] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [locationStatus, setLocationStatus] = useState("Location idle");
+
+  useEffect(() => {
+    setNavigationActive(false);
+    setCurrentStepIndex(0);
+    setLocationStatus("Location idle");
+  }, [route?.summary, route?.optimization]);
+
+  useEffect(() => {
+    if (!navigationActive) {
+      return;
+    }
+
+    if (!globalThis.navigator?.geolocation) {
+      setLocationStatus("Location unavailable in this browser");
+      return;
+    }
+
+    setLocationStatus("Checking current location");
+
+    globalThis.navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationStatus(
+          `Location ready near ${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`
+        );
+      },
+      () => {
+        setLocationStatus("Location permission not granted");
+      },
+      { enableHighAccuracy: false, timeout: 4000 }
+    );
+  }, [navigationActive]);
 
   if (loading) {
     return (
@@ -56,6 +91,9 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
       </section>
     );
   }
+
+  const currentStep = route.steps[currentStepIndex];
+  const navigationComplete = currentStepIndex >= route.steps.length - 1;
 
   return (
     <section className="results-panel">
@@ -115,6 +153,84 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
         <p className="eyebrow">Explanation engine</p>
         <p>{route.explanation}</p>
         {route.highlights ? <p className="explanation-subcopy">{route.highlights.campusFeel}</p> : null}
+      </div>
+
+      <div className="navigation-card">
+        <div className="navigation-header">
+          <div>
+            <p className="eyebrow">Navigation mode</p>
+            <h3>{navigationActive ? "Guided navigation is active." : "Step through the route one instruction at a time."}</h3>
+          </div>
+          <span className={`nav-status-pill ${navigationActive ? "live" : "idle"}`}>
+            {navigationActive ? "Active" : "Standby"}
+          </span>
+        </div>
+
+        <div className="navigation-meta">
+          <span>
+            Step {Math.min(currentStepIndex + 1, route.steps.length)} of {route.steps.length}
+          </span>
+          <span>{locationStatus}</span>
+        </div>
+
+        {navigationActive ? (
+          <div className="navigation-step">
+            <CuteCampusIcon variant={getModeIcon(currentStep.mode)} className="navigation-step-icon" />
+            <div>
+              <strong>{currentStep.instruction}</strong>
+              <p>
+                {formatMode(currentStep.mode)} · {currentStep.distance} · {currentStep.time}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="navigation-empty">Start navigation to focus on the current instruction without scanning the full step list.</p>
+        )}
+
+        <div className="navigation-actions">
+          {!navigationActive ? (
+            <button type="button" className="secondary-button" onClick={() => setNavigationActive(true)}>
+              Start navigation
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setCurrentStepIndex((index) => Math.max(index - 1, 0))}
+                disabled={currentStepIndex === 0}
+              >
+                Previous step
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigationComplete) {
+                    setNavigationActive(false);
+                    setCurrentStepIndex(0);
+                    setLocationStatus("Navigation finished");
+                    return;
+                  }
+
+                  setCurrentStepIndex((index) => Math.min(index + 1, route.steps.length - 1));
+                }}
+              >
+                {navigationComplete ? "Finish navigation" : "Next step"}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => {
+              setNavigationActive(false);
+              setCurrentStepIndex(0);
+              setLocationStatus("Location idle");
+            }}
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       <ol className="step-list">
