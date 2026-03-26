@@ -176,7 +176,7 @@ Status: `Partially Completed`
 - [x] Rewrite the README around RouteHacker.
 - [x] Document architecture and algorithm choices.
 - [x] Add setup and test commands.
-- [ ] Add deployment instructions.
+- [x] Add deployment instructions.
 - [ ] Deploy frontend to Vercel.
 - [ ] Deploy backend to Render.
 - [ ] Add final repo polish with screenshots, demo links, and clear folder overview.

@@ -42,6 +42,7 @@ Other useful commands:
 npm run test
 npm run test:server
 npm run test:client
+npm run build
 make
 ```
 
@@ -56,6 +57,19 @@ make
 ### Legacy Planner
 
 The original C++ transportation planner stays in the root-level `src/`, `include/`, `testsrc/`, and `Makefile` structure. That preserves the project history and makes the migration story easy to review.
+
+## Folder Overview
+
+```text
+.
+├── client/        React + Vite frontend
+├── server/        Express API and routing engine
+├── shared/        Shared RouteHacker metadata
+├── src/           Legacy C++ implementation
+├── include/       Legacy C++ headers
+├── testsrc/       Legacy C++ tests
+└── .devcontainer/ Dev container configuration
+```
 
 ## Routing Model
 
@@ -109,155 +123,50 @@ Frontend coverage currently includes:
 - success render
 - API error render
 
+## Deployment
+
+### Frontend on Vercel
+
+Create a Vercel project with the root directory set to `client/`.
+
+Set this environment variable in Vercel:
+
+```bash
+VITE_API_BASE_URL=https://your-render-service.onrender.com
+```
+
+Use these commands:
+
+```bash
+Build command: npm run build
+Output directory: dist
+```
+
+### Backend on Render
+
+The repository includes [render.yaml](/workspaces/RouteApp-AggieWorks/render.yaml) for a basic Render web service.
+
+If you configure the service manually instead, use:
+
+```bash
+Root directory: server
+Build command: npm install
+Start command: npm run start
+```
+
+Set this environment variable in Render after you know the frontend URL:
+
+```bash
+CLIENT_ORIGIN=https://your-vercel-app.vercel.app
+```
+
+For local development, the API still defaults to permissive CORS so the dev container workflow stays simple.
+
 ## Notes
 
 - `research_park` is intentionally disconnected in the seed graph so the API can exercise the no-route-found path.
 - Styling uses plain CSS rather than Tailwind to keep the MVP lightweight inside this mixed-language repository.
-- The current implementation is optimized for dev-container-based local development rather than production deployment configuration.
-
-#### Prompt 2: Looking Up Stops By Node ID
-
-**Question:**
-How do I implement `StopByNodeID()` efficiently?
-
-**Response:**
-Use an `unordered_map<TNodeID, std::shared_ptr<SStop>>`.
-The key is the node ID.
-The value is the stop pointer.
-During construction:
-- Insert every stop into `DStopsByNodeID`
-Then `StopByNodeID()` can use `.find()` directly.
-If the node ID does not exist:
-- Return `nullptr`
-
-**Implementation:**
-
-```cpp
-for(size_t Index = 0; Index < DBusSystem->StopCount(); Index++){
-    auto Stop = DBusSystem->StopByIndex(Index);
-    DStopsByNodeID[Stop->NodeID()] = Stop;
-}
-auto Search = DStopsByNodeID.find(id);
-if(Search == DStopsByNodeID.end()){
-    return nullptr;
-}
-return Search->second;
-```
-
-#### Prompt 3: Detecting Routes Between Two Node IDs
-
-**Question:**
-How do I check whether there is a route segment between two node IDs?
-
-**Response:**
-Walk through every route.
-For each consecutive pair of stops, convert the stop IDs into node IDs.
-Store the route using the pair `(srcNodeID, destNodeID)` as the key.
-This allows:
-- `RoutesByNodeIDs()` to return the matching route set
-- `RouteBetweenNodeIDs()` to quickly check if at least one route exists
-
-**Implementation:**
-
-```cpp
-for(auto Route: DSortedRoutesByIndex){
-    for(size_t Index = 1; Index < Route->StopCount(); Index++){
-        auto Previous = Route->GetStopID(Index-1);
-        auto Current = Route->GetStopID(Index);
-        auto FirstNodeID = DBusSystem->StopByID(Previous)->NodeID();
-        auto SecondNodeID = DBusSystem->StopByID(Current)->NodeID();
-        auto Key = std::make_pair(FirstNodeID,SecondNodeID);
-
-        auto Search = DRoutesByNodeIDs.find(Key);
-        if(Search == DRoutesByNodeIDs.end()){
-            DRoutesByNodeIDs[Key] = {Route};
-        }
-        else{
-            Search->second.insert(Route);
-        }
-    }
-}
-```
-
-#### Prompt 4: Handling Invalid Indexes Safely
-
-**Question:**
-What should happen if `SortedStopByIndex()` or `SortedRouteByIndex()` gets an invalid index?
-
-**Response:**
-Check the index before using it.
-If the index is out of range, return `nullptr`.
-This avoids invalid vector access and prevents crashes.
-
-**Implementation:**
-
-```cpp
-if(index >= DSortedStopsByIndex.size()){
-    return nullptr;
-}
-return DSortedStopsByIndex[index];
-if(index >= DSortedRoutesByIndex.size()){
-    return nullptr;
-}
-return DSortedRoutesByIndex[index];
-```
-
-#### Prompt 5: Representing The Graph In DijkstraPathRouter
-
-**Question:**
-How do I store the graph for Dijkstra's algorithm?
-
-**Response:**
-Store all vertices in a vector.
-Each vertex stores a tag and a list of outgoing edges.
-Each edge stores the weight and the destination vertex ID.
-This makes path search easier because:
-- neighbors are easy to iterate through
-- the destination ID is already available
-
-**Implementation:**
-
-```cpp
-struct SVertex;
-using TEdge = std::pair<double,TVertexID>;
-
-struct SVertex{
-    std::vector<TEdge> DEdges;
-    std::any DTag;
-};
-
-std::vector<std::shared_ptr<SVertex>> DVertices;
-```
-
-#### Prompt 6: Validating Edges Before Adding Them
-
-**Question:**
-What checks should `AddEdge()` perform?
-
-**Response:**
-Verify that `src` is a valid vertex ID.
-Verify that `dest` is a valid vertex ID.
-Reject the edge if the weight is negative.
-If `bidir` is true:
-- Add the reverse edge too
-If any input is invalid:
-- Return `false`
-
-**Implementation:**
-
-```cpp
-if(src >= DVertices.size() || dest >= DVertices.size() || weight < 0){
-    return false;
-}
-
-DVertices[src]->DEdges.push_back(std::make_pair(weight,dest));
-
-if(bidir){
-    DVertices[dest]->DEdges.push_back(std::make_pair(weight,src));
-}
-
-return true;
-```
+- Deployment now supports an environment-configured frontend API base URL and optional production CORS restriction.
 
 #### Prompt 7: Implementing Dijkstra's Algorithm
 

@@ -1,5 +1,7 @@
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
 export async function requestRoute(payload) {
-  const response = await fetch("/api/route", {
+  const response = await fetch(`${apiBaseUrl}/api/route`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

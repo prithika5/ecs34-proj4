@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: routehacker-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm run start
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 20

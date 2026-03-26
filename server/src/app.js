@@ -3,10 +3,24 @@ import express from "express";
 import { routeRouter } from "./routes/routeRouter.js";
 import { createApiError } from "./lib/errors.js";
 
+function getCorsOptions() {
+  const configuredOrigins = process.env.CLIENT_ORIGIN?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (!configuredOrigins || configuredOrigins.length === 0) {
+    return {};
+  }
+
+  return {
+    origin: configuredOrigins
+  };
+}
+
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors(getCorsOptions()));
   app.use(express.json());
 
   app.use("/api", routeRouter);
