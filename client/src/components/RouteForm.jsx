@@ -2,36 +2,47 @@ import { locationOptions, optimizationModes } from "@shared/routeOptions.js";
 
 export default function RouteForm({ formState, onChange, onSubmit, loading, validationError }) {
   const activeLocations = locationOptions.filter((location) => location.status === "active");
+  const handleSwap = () => {
+    onChange({ target: { name: "start", value: formState.end } });
+    onChange({ target: { name: "end", value: formState.start } });
+  };
 
   return (
     <form className="route-form card" onSubmit={onSubmit}>
       <div className="form-intro">
         <p className="eyebrow">Planner</p>
         <h2>Search a route</h2>
+        <p className="form-helper">Pick two stops and choose the route mode that matters most.</p>
       </div>
 
-      <div className="field-grid">
-        <label>
-          <span>Start</span>
-          <select name="start" value={formState.start} onChange={onChange}>
-            {activeLocations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="route-inputs">
+        <div className="field-grid compact">
+          <label>
+            <span>Start</span>
+            <select name="start" value={formState.start} onChange={onChange}>
+              {activeLocations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label>
-          <span>End</span>
-          <select name="end" value={formState.end} onChange={onChange}>
-            {activeLocations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label>
+            <span>End</span>
+            <select name="end" value={formState.end} onChange={onChange}>
+              {activeLocations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <button type="button" className="swap-button" onClick={handleSwap} aria-label="Swap start and end">
+          Swap
+        </button>
       </div>
 
       <fieldset className="mode-toggle">
@@ -50,6 +61,7 @@ export default function RouteForm({ formState, onChange, onSubmit, loading, vali
             </label>
           ))}
         </div>
+        <small>Choose the shortest trip or the fastest arrival.</small>
       </fieldset>
 
       {validationError ? <p className="message error">{validationError}</p> : null}
