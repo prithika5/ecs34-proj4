@@ -6,7 +6,8 @@ import { requestRoute } from "./lib/api.js";
 const defaultForm = {
   start: "aggie_works",
   end: "west_village",
-  optimization: "shortest"
+  optimization: "shortest",
+  modePreference: "any"
 };
 
 export default function App() {

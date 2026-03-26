@@ -11,6 +11,25 @@ export const optimizationModes = [
   }
 ];
 
+export const transportationModes = [
+  {
+    id: "any",
+    label: "Any mode"
+  },
+  {
+    id: "walk",
+    label: "Walk only"
+  },
+  {
+    id: "bike",
+    label: "Bike only"
+  },
+  {
+    id: "shuttle",
+    label: "Shuttle only"
+  }
+];
+
 export const locationOptions = [
   { id: "aggie_works", label: "AggieWorks Studio", status: "active", icon: "cow_lab", area: "Downtown Davis" },
   { id: "memorial_union", label: "Memorial Union", status: "active", icon: "union", area: "Central campus" },
@@ -23,7 +42,8 @@ export const locationOptions = [
 ];
 
 export const routeApiContract = {
-  requiredFields: ["start", "end", "optimization"]
+  requiredFields: ["start", "end", "optimization"],
+  optionalFields: ["modePreference"]
 };
 
 export function getLocationOptionById(id) {

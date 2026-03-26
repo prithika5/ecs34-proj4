@@ -11,6 +11,7 @@ describe("RouteHacker app", () => {
   it("renders the route form", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: /Choose a start, destination, and route mode/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Transportation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /See best route/i })).toBeInTheDocument();
   });
 

@@ -264,6 +264,10 @@ h3 {
   font-size: 0.82rem;
 }
 
+.transport-preference small {
+  font-size: 0.82rem;
+}
+
 button {
   border: 0;
   border-radius: 999px;
@@ -371,7 +375,7 @@ button:disabled {
 }
 
 .stats {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   margin-top: 0.85rem;
 }
 
@@ -623,6 +627,10 @@ button:disabled {
   .planner-shell {
     grid-template-columns: minmax(0, 0.82fr) minmax(360px, 0.95fr);
     align-items: stretch;
+  }
+
+  .stats {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

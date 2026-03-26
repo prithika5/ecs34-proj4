@@ -34,6 +34,14 @@ function getTradeoffCopy(route, comparisonRoute) {
   return "Less distance with a slightly slower arrival.";
 }
 
+function formatModePreference(modePreference) {
+  if (!modePreference || modePreference === "any") {
+    return "Any mode";
+  }
+
+  return `${formatMode(modePreference)} only`;
+}
+
 export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
   const startLocation = getLocationOptionById(formState?.start);
   const endLocation = getLocationOptionById(formState?.end);
@@ -115,6 +123,7 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
   const navigationComplete = currentStepIndex >= route.steps.length - 1;
   const dominantMode = route.highlights?.dominantMode ? formatMode(route.highlights.dominantMode) : "Mixed";
   const tradeoffCopy = getTradeoffCopy(route, comparisonRoute);
+  const modePreferenceLabel = formatModePreference(route.modePreference);
 
   return (
     <section className="results-shell">
@@ -148,6 +157,10 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <article>
             <span>Dominant mode</span>
             <strong>{dominantMode}</strong>
+          </article>
+          <article>
+            <span>Requested</span>
+            <strong>{modePreferenceLabel}</strong>
           </article>
         </div>
       </section>

@@ -1,4 +1,4 @@
-import { locationOptions, optimizationModes } from "@shared/routeOptions.js";
+import { locationOptions, optimizationModes, transportationModes } from "@shared/routeOptions.js";
 
 export default function RouteForm({ formState, onChange, onSubmit, loading, validationError }) {
   const activeLocations = locationOptions.filter((location) => location.status === "active");
@@ -63,6 +63,18 @@ export default function RouteForm({ formState, onChange, onSubmit, loading, vali
         </div>
         <small>Choose the shortest trip or the fastest arrival.</small>
       </fieldset>
+
+      <label className="transport-preference">
+        <span>Transportation</span>
+        <select name="modePreference" aria-label="Transportation" value={formState.modePreference} onChange={onChange}>
+          {transportationModes.map((mode) => (
+            <option key={mode.id} value={mode.id}>
+              {mode.label}
+            </option>
+          ))}
+        </select>
+        <small>Optional filter if you want to stay with one mode.</small>
+      </label>
 
       {validationError ? <p className="message error">{validationError}</p> : null}
 

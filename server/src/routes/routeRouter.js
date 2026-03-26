@@ -12,7 +12,7 @@ routeRouter.get("/health", (_request, response) => {
 });
 
 routeRouter.post("/route", (request, response, next) => {
-  const { start, end, optimization } = request.body ?? {};
+  const { start, end, optimization, modePreference } = request.body ?? {};
 
   if (!start || !end || !optimization) {
     return next(
@@ -23,7 +23,7 @@ routeRouter.post("/route", (request, response, next) => {
   }
 
   try {
-    const route = computeRoute({ start, end, optimization });
+    const route = computeRoute({ start, end, optimization, modePreference });
     return response.json(route);
   } catch (error) {
     return next(error);

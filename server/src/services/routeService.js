@@ -2,6 +2,7 @@ import { graph } from "../data/graph.js";
 import { createApiError } from "../lib/errors.js";
 
 const validOptimizations = new Set(["shortest", "fastest"]);
+const validModePreferences = new Set(["any", "walk", "bike", "shuttle"]);
 
 function buildAdjacency(edges) {
   const adjacency = new Map();
@@ -29,6 +30,10 @@ const adjacency = buildAdjacency(graph.edges);
 
 function getWeight(edge, optimization) {
   return optimization === "fastest" ? edge.time : edge.distance;
+}
+
+function edgeMatchesPreference(edge, modePreference) {
+  return modePreference === "any" || edge.mode === modePreference;
 }
 
 function formatDistance(distance) {
@@ -68,7 +73,7 @@ function reconstructRoute(previous, start, end) {
   return path;
 }
 
-function explainRoute(route, optimization) {
+function explainRoute(route, optimization, modePreference) {
   const modeCount = route.steps.reduce((count, step) => {
     count[step.mode] = (count[step.mode] || 0) + 1;
     return count;
@@ -80,10 +85,12 @@ function explainRoute(route, optimization) {
       ? "It prioritizes low travel time even when the total distance is slightly longer."
       : "It stays compact on distance even if that means a slower overall pace.";
 
-  return `${toTitleCase(optimization)} mode leans on ${dominantMode} segments. ${tradeoff}`;
+  const preferenceNote = modePreference !== "any" ? ` It only uses ${modePreference} segments.` : "";
+
+  return `${toTitleCase(optimization)} mode leans on ${dominantMode} segments.${preferenceNote} ${tradeoff}`;
 }
 
-function buildHighlights(steps, optimization) {
+function buildHighlights(steps, optimization, modePreference) {
   const modeCount = steps.reduce((count, step) => {
     count[step.mode] = (count[step.mode] || 0) + 1;
     return count;
@@ -95,6 +102,7 @@ function buildHighlights(steps, optimization) {
     dominantMode,
     stepCount: steps.length,
     tradeoffLabel: optimization === "fastest" ? "Saves time" : "Cuts distance",
+    modePreference,
     campusFeel:
       optimization === "fastest"
         ? "Shuttle and bike links do most of the heavy lifting on this trip."
@@ -102,13 +110,17 @@ function buildHighlights(steps, optimization) {
   };
 }
 
-export function computeRoute({ start, end, optimization }) {
+export function computeRoute({ start, end, optimization, modePreference = "any" }) {
   if (!graph.nodes[start] || !graph.nodes[end]) {
     throw createApiError(400, "INVALID_LOCATION", "Start and end must be valid RouteHacker locations.");
   }
 
   if (!validOptimizations.has(optimization)) {
     throw createApiError(400, "INVALID_OPTIMIZATION", "Optimization must be either shortest or fastest.");
+  }
+
+  if (!validModePreferences.has(modePreference)) {
+    throw createApiError(400, "INVALID_MODE_PREFERENCE", "Mode preference must be any, walk, bike, or shuttle.");
   }
 
   if (start === end) {
@@ -150,6 +162,10 @@ export function computeRoute({ start, end, optimization }) {
         continue;
       }
 
+      if (!edgeMatchesPreference(edge, modePreference)) {
+        continue;
+      }
+
       const tentativeDistance = currentDistance + getWeight(edge, optimization);
 
       if (tentativeDistance < distances.get(edge.to)) {
@@ -162,7 +178,12 @@ export function computeRoute({ start, end, optimization }) {
   const steps = reconstructRoute(previous, start, end);
 
   if (!steps || steps.length === 0) {
-    throw createApiError(404, "ROUTE_NOT_FOUND", "No connected route exists for the requested locations.");
+    const message =
+      modePreference === "any"
+        ? "No connected route exists for the requested locations."
+        : `No ${modePreference} route exists for the requested locations.`;
+
+    throw createApiError(404, "ROUTE_NOT_FOUND", message);
   }
 
   const totals = steps.reduce(
@@ -186,6 +207,7 @@ export function computeRoute({ start, end, optimization }) {
   return {
     summary: `${graph.nodes[start].label} to ${graph.nodes[end].label}`,
     optimization,
+    modePreference,
     totals: {
       distance: formatDistance(totals.distance),
       time: formatTime(totals.time),
@@ -193,7 +215,7 @@ export function computeRoute({ start, end, optimization }) {
       rawTime: totals.time
     },
     steps: routeSteps,
-    explanation: explainRoute({ steps: routeSteps }, optimization),
-    highlights: buildHighlights(routeSteps, optimization)
+    explanation: explainRoute({ steps: routeSteps }, optimization, modePreference),
+    highlights: buildHighlights(routeSteps, optimization, modePreference)
   };
 }
