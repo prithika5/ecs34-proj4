@@ -5,19 +5,19 @@ import { requestRoute } from "./lib/api.js";
 
 const highlightScenarios = [
   {
-    title: "Fast commute",
-    copy: "Use shuttle-heavy routing when travel time matters more than mileage.",
-    accent: "Shuttle bias"
+    title: "Fast pickup feel",
+    copy: "Large controls and short summaries keep the route readable in seconds.",
+    accent: "Speed first"
   },
   {
-    title: "Compact path",
-    copy: "Keep the route tight when the shortest physical distance is the real goal.",
-    accent: "Distance bias"
+    title: "Clear decisions",
+    copy: "Shortest and fastest modes stay easy to compare without adding clutter.",
+    accent: "Practical"
   },
   {
-    title: "Transparent tradeoffs",
-    copy: "Every result explains why the engine preferred one trip over another.",
-    accent: "Explainability"
+    title: "Trusted output",
+    copy: "Every route includes deterministic explanation copy instead of a black box answer.",
+    accent: "Reliable"
   }
 ];
 
@@ -69,18 +69,25 @@ export default function App() {
 
   return (
     <main className="page-shell">
+      <header className="app-header">
+        <div>
+          <p className="brand-kicker">RouteHacker</p>
+          <p className="brand-subtitle">Routing intelligence with a premium ride-booking feel.</p>
+        </div>
+      </header>
+
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">RouteHacker MVP</p>
-          <h1>Deterministic routing with startup-grade presentation.</h1>
+          <p className="eyebrow">Premium routing interface</p>
+          <h1>Fast to scan. Easy to trust. Built for motion.</h1>
           <p className="lede">
-            RouteHacker turns graph logic into a product demo: shortest and fastest trips, transparent tradeoffs, and
-            polished feedback for every state.
+            RouteHacker presents deterministic routing in a clean transportation-style interface with strong hierarchy,
+            fast decision-making, and polished route feedback.
           </p>
           <div className="feature-strip">
-            <span>Shortest vs fastest</span>
+            <span>Shortest or fastest</span>
+            <span>Readable in under 3 seconds</span>
             <span>Deterministic explanations</span>
-            <span>Responsive route summaries</span>
           </div>
           <div className="scenario-strip">
             {highlightScenarios.map((scenario) => (
@@ -105,24 +112,24 @@ export default function App() {
         <RouteResults route={route} error={error} loading={loading} />
 
         <aside className="notes-panel">
-          <p className="eyebrow">Why this feels different</p>
-          <h2>Built like an MVP, not a coursework screenshot.</h2>
+          <p className="eyebrow">Why it works</p>
+          <h2>Modern transportation UI without dashboard clutter.</h2>
           <p>
             The backend owns the routing algorithm directly, so the interface can explain why a faster trip might be
-            longer, or why a shorter path slows you down.
+            longer, or why a shorter route takes more time.
           </p>
           <div className="mini-cards">
             <article>
-              <strong>Validation</strong>
-              <p>Clear errors for invalid locations, same-point trips, and disconnected routes.</p>
+              <strong>Practical feedback</strong>
+              <p>Large controls, simple route summaries, and clear validation keep the flow calm and fast.</p>
             </article>
             <article>
-              <strong>Extensible graph</strong>
-              <p>Seed data is easy to expand into neighborhood, campus, or transit-focused route maps.</p>
+              <strong>Expandable engine</strong>
+              <p>Seed graph data can grow into larger neighborhood, campus, or transit route maps.</p>
             </article>
           </div>
           <div className="product-note">
-            <p className="eyebrow">Launch posture</p>
+            <p className="eyebrow">Ready to ship</p>
             <p>
               Dev-container ready, tested on both client and server, and structured so Vercel and Render deployment can
               be added without reshaping the app.

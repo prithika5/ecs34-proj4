@@ -4,14 +4,23 @@ function formatMode(mode) {
 
 export default function RouteResults({ route, error, loading }) {
   if (loading) {
-    return <section className="results-panel loading">Crunching graph weights and route tradeoffs...</section>;
+    return (
+      <section className="results-panel loading">
+        <div className="status-block">
+          <span className="status-pulse" />
+          <p className="eyebrow">Finding route</p>
+          <h2>Checking the best path now.</h2>
+          <p>Crunching graph weights and route tradeoffs.</p>
+        </div>
+      </section>
+    );
   }
 
   if (error) {
     return (
       <section className="results-panel">
         <p className="eyebrow">Route status</p>
-        <h2>We could not build that trip.</h2>
+        <h2>We could not build this route.</h2>
         <p className="message error">{error}</p>
       </section>
     );
@@ -21,10 +30,10 @@ export default function RouteResults({ route, error, loading }) {
     return (
       <section className="results-panel empty">
         <p className="eyebrow">Route preview</p>
-        <h2>Shortest and fastest decisions will show up here.</h2>
+        <h2>Your trip summary will appear here.</h2>
         <p>
-          Pick two locations, choose an optimization mode, and RouteHacker will explain the tradeoff instead of
-          hiding the logic.
+          Pick a start, destination, and route mode. We will return a clean summary, step cards, and the tradeoff
+          behind the recommendation.
         </p>
       </section>
     );
@@ -64,7 +73,7 @@ export default function RouteResults({ route, error, loading }) {
         {route.steps.map((step) => (
           <li key={step.index}>
             <span className="step-marker">{step.index}</span>
-            <div>
+            <div className="step-card">
               <strong>{step.instruction}</strong>
               <p>
                 {formatMode(step.mode)} · {step.distance} · {step.time}

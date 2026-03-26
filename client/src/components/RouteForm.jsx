@@ -6,9 +6,9 @@ export default function RouteForm({ formState, onChange, onSubmit, loading, vali
   return (
     <form className="route-form" onSubmit={onSubmit}>
       <div className="form-intro">
-        <p className="eyebrow">Trip builder</p>
-        <h2>Pick the route behavior you want.</h2>
-        <p>{activeLocations.length} active destinations are available in the current seed map.</p>
+        <p className="eyebrow">Search route</p>
+        <h2>Where are you headed?</h2>
+        <p>{activeLocations.length} active destinations are available in the current route map.</p>
       </div>
 
       <div className="field-grid">
@@ -54,10 +54,13 @@ export default function RouteForm({ formState, onChange, onSubmit, loading, vali
 
       {validationError ? <p className="message error">{validationError}</p> : null}
 
-      <p className="field-hint">Offline destinations remain in the backend graph for no-route testing, but stay hidden in the main UI.</p>
+      <div className="field-hint">
+        <span className="field-hint-dot" />
+        <p>Offline destinations stay hidden from the main search flow but still exist for backend edge-case testing.</p>
+      </div>
 
       <button type="submit" disabled={loading}>
-        {loading ? "Computing route..." : "Hack the route"}
+        {loading ? "Finding best route..." : "See best route"}
       </button>
     </form>
   );

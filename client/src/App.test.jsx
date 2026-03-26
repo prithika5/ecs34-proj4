@@ -10,8 +10,8 @@ afterEach(() => {
 describe("RouteHacker app", () => {
   it("renders the route form", () => {
     render(<App />);
-    expect(screen.getByText(/Deterministic routing with startup-grade presentation/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Hack the route/i })).toBeInTheDocument();
+    expect(screen.getByText(/Fast to scan. Easy to trust. Built for motion/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /See best route/i })).toBeInTheDocument();
   });
 
   it("validates same start and end before calling the API", async () => {
@@ -19,7 +19,7 @@ describe("RouteHacker app", () => {
     render(<App />);
 
     fireEvent.change(screen.getByLabelText("End"), { target: { value: "aggie_works" } });
-    fireEvent.click(screen.getByRole("button", { name: /Hack the route/i }));
+    fireEvent.click(screen.getByRole("button", { name: /See best route/i }));
 
     expect(await screen.findByText(/Start and end need to be different/i)).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -35,9 +35,9 @@ describe("RouteHacker app", () => {
     );
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /Hack the route/i }));
+    fireEvent.click(screen.getByRole("button", { name: /See best route/i }));
 
-    expect(screen.getByText(/Crunching graph weights/i)).toBeInTheDocument();
+    expect(screen.getByText(/Checking the best path now/i)).toBeInTheDocument();
 
     resolveFetch({
       ok: true,
@@ -62,7 +62,7 @@ describe("RouteHacker app", () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /Hack the route/i }));
+    fireEvent.click(screen.getByRole("button", { name: /See best route/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/No connected route exists/i)).toBeInTheDocument();
