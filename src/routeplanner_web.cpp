@@ -265,7 +265,6 @@ int Main(const std::string &dataDirectory) {
           return 1;
         }
 
-        totalTimeHours = totalDistanceMiles / config->WalkSpeed();
         for (const auto nodeId : shortestPath) {
             tripSteps.push_back(std::make_pair(CTransportationPlanner::ETransportationMode::Walk, nodeId));
         }
@@ -288,13 +287,19 @@ int Main(const std::string &dataDirectory) {
         return 1;
     }
 
+    double computedPathDistanceMiles = 0.0;
     for (std::size_t index = 1; index < tripSteps.size(); index++) {
         auto fromNode = map->NodeByID(tripSteps[index - 1].second);
         auto toNode = map->NodeByID(tripSteps[index].second);
         if (!fromNode || !toNode) {
             continue;
         }
-        totalDistanceMiles += SGeographicUtils::HaversineDistanceInMiles(fromNode->Location(), toNode->Location());
+        computedPathDistanceMiles += SGeographicUtils::HaversineDistanceInMiles(fromNode->Location(), toNode->Location());
+    }
+
+    totalDistanceMiles = computedPathDistanceMiles;
+    if (request.DOptimization == "shortest") {
+        totalTimeHours = totalDistanceMiles / config->WalkSpeed();
     }
 
     double walkDistance = 0.0;
