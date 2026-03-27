@@ -19,6 +19,14 @@ function getTradeoffCopy(route, comparisonRoute) {
     return "Best available route from the current planner run.";
   }
 
+  const sameDistance = Math.abs((route.totals?.rawDistance || 0) - (comparisonRoute.totals?.rawDistance || 0)) < 0.01;
+  const sameGeometry =
+    JSON.stringify(route.geometry?.coordinates || []) === JSON.stringify(comparisonRoute.geometry?.coordinates || []);
+
+  if (sameGeometry || sameDistance) {
+    return "Both modes follow the same corridor here. The main difference is pace, not the line on the map.";
+  }
+
   if (route.optimization === "fastest") {
     return `Fastest arrives in ${route.totals.time} instead of ${comparisonRoute.totals.time}, with a slightly longer line on the map.`;
   }
@@ -62,6 +70,26 @@ function getEngineLabel(engine) {
   }
 
   return "Demo route";
+}
+
+function getTimeLabel(route) {
+  return route.optimization === "shortest" ? "Est. walking time" : "Travel time";
+}
+
+function getWhyCopy(route, comparisonRoute) {
+  const sameDistance = comparisonRoute ? Math.abs((route.totals?.rawDistance || 0) - (comparisonRoute.totals?.rawDistance || 0)) < 0.01 : false;
+  const sameGeometry =
+    comparisonRoute && JSON.stringify(route.geometry?.coordinates || []) === JSON.stringify(comparisonRoute.geometry?.coordinates || []);
+
+  if (route.optimization === "shortest" && (sameGeometry || sameDistance)) {
+    return "Shortest keeps the same corridor but estimates the trip as a full walking pace, which is why the time reads longer than the fastest option.";
+  }
+
+  if (route.optimization === "shortest") {
+    return "Shortest minimizes total path distance. Its time is currently estimated from the compact path at walking pace.";
+  }
+
+  return route.explanation;
 }
 
 export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
@@ -112,6 +140,7 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <div>
             <p className="panel-kicker">Trip summary</p>
             <h2>{route.totals.time}</h2>
+            <p className="trip-time-caption">{getTimeLabel(route)}</p>
           </div>
           <span className={`optimization-badge ${route.optimization}`}>{formatMode(route.optimization)}</span>
         </div>
@@ -175,7 +204,7 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <p className="panel-kicker">Why this route?</p>
           <span>{route.steps.length} steps</span>
         </div>
-        <p>{route.explanation}</p>
+        <p>{getWhyCopy(route, comparisonRoute)}</p>
       </section>
 
       <section className="trip-card steps">

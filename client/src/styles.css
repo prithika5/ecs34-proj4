@@ -377,6 +377,12 @@ p {
   align-content: center;
 }
 
+.trip-time-caption {
+  margin-top: 0.28rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .trip-card-topline,
 .compact-card-header,
 .timeline-row,
@@ -436,6 +442,23 @@ p {
   gap: 0.24rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--line);
+}
+
+.trip-engine-note {
+  display: grid;
+  gap: 0.24rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.trip-engine-note span {
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.trip-engine-note p {
+  font-size: 0.84rem;
 }
 
 .trip-breakdown p,

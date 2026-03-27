@@ -98,6 +98,7 @@ describe("RouteHacker app", () => {
 
     expect(await screen.findByRole("heading", { name: "10 min" })).toBeInTheDocument();
     expect(screen.getByText(/Mode breakdown/i)).toBeInTheDocument();
+    expect(screen.getByText(/Travel time/i)).toBeInTheDocument();
     expect(screen.getByText(/Real C\+\+ route/i)).toBeInTheDocument();
     expect(screen.getByText(/Compare modes/i)).toBeInTheDocument();
     expect(screen.getByText(/Fastest mode leans on shuttle segments/i)).toBeInTheDocument();
