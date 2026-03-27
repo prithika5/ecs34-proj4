@@ -507,6 +507,28 @@ p {
   inset: 0;
 }
 
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #e7e7e7;
+  font: inherit;
+}
+
+.leaflet-control-attribution,
+.leaflet-control-zoom {
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 12px 24px rgba(17, 17, 17, 0.1) !important;
+}
+
+.leaflet-control-attribution a {
+  color: inherit;
+}
+
+.leaflet-marker-shell {
+  background: transparent;
+  border: 0;
+}
+
 .map-surface {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 24rem),

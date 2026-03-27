@@ -44,6 +44,20 @@ function getBounds(points) {
   );
 }
 
+function createMarkerIcon(role) {
+  const html =
+    role === "poi"
+      ? '<button type="button" class="map-marker poi"><span class="map-marker-core"></span></button>'
+      : `<button type="button" class="map-marker ${role}"><span class="map-marker-badge">${role === "start" ? "A" : "B"}</span></button>`;
+
+  return {
+    html,
+    className: "leaflet-marker-shell",
+    iconSize: role === "poi" ? [20, 20] : [34, 34],
+    iconAnchor: role === "poi" ? [10, 10] : [17, 17]
+  };
+}
+
 export default function MapView({
   locations,
   startLocation,
@@ -54,11 +68,11 @@ export default function MapView({
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const mapboxRef = useRef(null);
+  const leafletRef = useRef(null);
   const markersRef = useRef([]);
-  const loadedRef = useRef(false);
-  const mapToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-  const interactiveReady = Boolean(mapToken) && import.meta.env.MODE !== "test";
+  const routeLineRef = useRef(null);
+  const glowLineRef = useRef(null);
+  const interactiveReady = import.meta.env.MODE !== "test";
 
   const routeCoordinates = route?.geometry?.coordinates || [];
   const selectedPoints = useMemo(() => {
@@ -83,75 +97,45 @@ export default function MapView({
     let removed = false;
 
     async function initializeMap() {
-      const mapboxModule = await import("mapbox-gl");
+      const leafletModule = await import("leaflet");
 
       if (removed || !containerRef.current) {
         return;
       }
 
-      const mapboxgl = mapboxModule.default;
-      mapboxgl.accessToken = mapToken;
-      mapboxRef.current = mapboxgl;
+      const L = leafletModule.default;
+      leafletRef.current = L;
 
-      const map = new mapboxgl.Map({
-        container: containerRef.current,
-        style: "mapbox://styles/mapbox/light-v11",
-        center: [fallbackCenter.longitude, fallbackCenter.latitude],
-        zoom: 13.7,
-        attributionControl: false
-      });
+      const map = L.map(containerRef.current, {
+        zoomControl: false,
+        attributionControl: true
+      }).setView([fallbackCenter.latitude, fallbackCenter.longitude], 14);
 
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-right");
-      map.on("load", () => {
-        if (removed) {
-          return;
-        }
+      L.control.zoom({ position: "bottomright" }).addTo(map);
 
-        loadedRef.current = true;
-        map.addSource("route-line", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: []
-            }
-          }
-        });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
 
-        map.addLayer({
-          id: "route-line-glow",
-          type: "line",
-          source: "route-line",
-          layout: {
-            "line-cap": "round",
-            "line-join": "round"
-          },
-          paint: {
-            "line-color": "#ffffff",
-            "line-width": 10,
-            "line-opacity": 0.36
-          }
-        });
+      glowLineRef.current = L.polyline([], {
+        color: "#ffffff",
+        weight: 10,
+        opacity: 0.4,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(map);
 
-        map.addLayer({
-          id: "route-line",
-          type: "line",
-          source: "route-line",
-          layout: {
-            "line-cap": "round",
-            "line-join": "round"
-          },
-          paint: {
-            "line-color": "#111111",
-            "line-width": 5,
-            "line-opacity": 0.88
-          }
-        });
-      });
+      routeLineRef.current = L.polyline([], {
+        color: "#111111",
+        weight: 5,
+        opacity: 0.9,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(map);
 
       map.on("click", (event) => {
-        const nearest = findNearestLocation(locations, event.lngLat.lng, event.lngLat.lat);
+        const nearest = findNearestLocation(locations, event.latlng.lng, event.latlng.lat);
         onMapPick(nearest.id);
       });
 
@@ -162,68 +146,58 @@ export default function MapView({
 
     return () => {
       removed = true;
-      loadedRef.current = false;
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
+
+      if (routeLineRef.current) {
+        routeLineRef.current.remove();
+        routeLineRef.current = null;
+      }
+
+      if (glowLineRef.current) {
+        glowLineRef.current.remove();
+        glowLineRef.current = null;
+      }
 
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [interactiveReady, locations, mapToken, onMapPick]);
+  }, [interactiveReady, locations, onMapPick]);
 
   useEffect(() => {
-    if (!interactiveReady || !mapRef.current || !mapboxRef.current || !loadedRef.current) {
+    if (!interactiveReady || !mapRef.current || !leafletRef.current) {
       return;
     }
 
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
-    const mapboxgl = mapboxRef.current;
+    const L = leafletRef.current;
 
     for (const location of locations) {
-      const element = document.createElement("button");
-      const role =
-        location.id === startLocation?.id ? "start" : location.id === endLocation?.id ? "end" : "poi";
+      const role = location.id === startLocation?.id ? "start" : location.id === endLocation?.id ? "end" : "poi";
 
-      element.type = "button";
-      element.className = `map-marker ${role}`;
-      element.title = `${location.label}${role === "poi" ? "" : ` (${role})`}`;
-      element.innerHTML =
-        role === "poi"
-          ? '<span class="map-marker-core"></span>'
-          : `<span class="map-marker-badge">${role === "start" ? "A" : "B"}</span>`;
-      element.addEventListener("click", (event) => {
-        event.stopPropagation();
-        onMapPick(location.id);
-      });
-
-      const marker = new mapboxgl.Marker({ element, anchor: "center" })
-        .setLngLat([location.coordinates.longitude, location.coordinates.latitude])
-        .addTo(mapRef.current);
+      const marker = L.marker([location.coordinates.latitude, location.coordinates.longitude], {
+        icon: L.divIcon(createMarkerIcon(role))
+      })
+        .addTo(mapRef.current)
+        .on("click", () => onMapPick(location.id));
 
       markersRef.current.push(marker);
     }
   }, [endLocation?.id, interactiveReady, locations, onMapPick, startLocation?.id]);
 
   useEffect(() => {
-    if (!interactiveReady || !mapRef.current || !loadedRef.current) {
+    if (!interactiveReady || !mapRef.current || !routeLineRef.current || !glowLineRef.current) {
       return;
     }
 
-    const source = mapRef.current.getSource("route-line");
+    const latLngs = routeCoordinates.map(([longitude, latitude]) => [latitude, longitude]);
 
-    if (source) {
-      source.setData({
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: routeCoordinates
-        }
-      });
-    }
+    routeLineRef.current.setLatLngs(latLngs);
+    glowLineRef.current.setLatLngs(latLngs);
 
     const focusPoints = routeCoordinates.length > 1 ? routeCoordinates : selectedPoints;
     const bounds = getBounds(focusPoints);
@@ -233,28 +207,22 @@ export default function MapView({
     }
 
     if (bounds.west === bounds.east && bounds.south === bounds.north) {
-      mapRef.current.flyTo({
-        center: [bounds.west, bounds.south],
-        zoom: 15,
-        duration: 700
+      mapRef.current.flyTo([bounds.south, bounds.west], 15, {
+        animate: true,
+        duration: 0.7
       });
       return;
     }
 
     mapRef.current.fitBounds(
       [
-        [bounds.west, bounds.south],
-        [bounds.east, bounds.north]
+        [bounds.south, bounds.west],
+        [bounds.north, bounds.east]
       ],
       {
-        padding: {
-          top: 120,
-          right: 40,
-          bottom: 180,
-          left: 40
-        },
-        duration: 700,
-        maxZoom: 15.2
+        paddingTopLeft: [40, 120],
+        paddingBottomRight: [40, 180],
+        maxZoom: 15
       }
     );
   }, [interactiveReady, routeCoordinates, selectedPoints]);
@@ -264,8 +232,8 @@ export default function MapView({
       <section className="map-surface static" aria-label="Map preview">
         <div className="map-grid" />
         <div className="map-static-card">
-          <p>Mapbox token needed for the live map.</p>
-          <span>Set `VITE_MAPBOX_ACCESS_TOKEN` to enable click-to-route interactions.</span>
+          <p>OpenStreetMap preview</p>
+          <span>The live map loads automatically outside tests, with no token or billing setup.</span>
         </div>
         <div className="map-static-pills">
           {locations.map((location) => (

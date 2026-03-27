@@ -13,7 +13,7 @@ RouteHacker is a full-stack routing app layered on top of this repository's orig
 - Express backend in `server/`
 - Real C++ transportation planner from the ECS 34 codebase
 - OpenStreetMap + bus-system routing data from `data/`
-- Full-screen Mapbox map with floating trip planning UI
+- Full-screen Leaflet + OpenStreetMap map with floating trip planning UI
 - Shortest-vs-fastest route computation
 - Searchable Davis pickup and destination selection with map click support
 - Legacy seeded graph fallback for unsupported/demo-only cases
@@ -66,7 +66,6 @@ Create `client/.env` from `client/.env.example` and set:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:3000
-VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_public_token
 ```
 
 ### Build The C++ Web Adapter
