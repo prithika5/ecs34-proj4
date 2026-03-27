@@ -29,8 +29,6 @@ export default function RouteForm({
             label="Start"
             value={startLocation}
             locations={locations}
-            active={false}
-            onActivate={() => {}}
             onSelect={(locationId) => onLocationSelect("start", locationId)}
           />
 
@@ -42,8 +40,6 @@ export default function RouteForm({
             label="Destination"
             value={endLocation}
             locations={locations}
-            active={false}
-            onActivate={() => {}}
             onSelect={(locationId) => onLocationSelect("end", locationId)}
           />
         </div>

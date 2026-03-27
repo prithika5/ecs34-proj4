@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-export default function LocationSearchField({ label, value, locations, onSelect, onActivate, active }) {
+export default function LocationSearchField({ label, value, locations, onSelect }) {
   const [query, setQuery] = useState(value?.label || "");
   const [open, setOpen] = useState(false);
 
@@ -21,8 +21,34 @@ export default function LocationSearchField({ label, value, locations, onSelect,
     });
   }, [locations, query]);
 
+  function commitSelection(nextLocation) {
+    if (!nextLocation) {
+      setQuery(value?.label || "");
+      setOpen(false);
+      return;
+    }
+
+    onSelect(nextLocation.id);
+    setQuery(nextLocation.label);
+    setOpen(false);
+  }
+
+  function syncQueryToSelection() {
+    const normalizedQuery = query.trim().toLowerCase();
+    const currentLabel = value?.label?.trim().toLowerCase() || "";
+
+    if (!normalizedQuery || normalizedQuery === currentLabel) {
+      setQuery(value?.label || "");
+      setOpen(false);
+      return;
+    }
+
+    const exactMatch = filteredLocations.find((location) => location.label.trim().toLowerCase() === normalizedQuery);
+    commitSelection(exactMatch || filteredLocations[0] || null);
+  }
+
   return (
-    <label className={`location-search-field ${active ? "active" : ""}`}>
+    <label className="location-search-field active">
       <span>{label}</span>
       <div className="location-search-shell">
         <input
@@ -31,18 +57,26 @@ export default function LocationSearchField({ label, value, locations, onSelect,
           placeholder={`Search ${label.toLowerCase()}`}
           value={query}
           onFocus={() => {
-            onActivate();
             setOpen(true);
           }}
           onChange={(event) => {
-            onActivate();
             setQuery(event.target.value);
             setOpen(true);
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              syncQueryToSelection();
+            }
+
+            if (event.key === "Escape") {
+              setQuery(value?.label || "");
+              setOpen(false);
+            }
+          }}
           onBlur={() => {
             globalThis.setTimeout(() => {
-              setOpen(false);
-              setQuery(value?.label || "");
+              syncQueryToSelection();
             }, 120);
           }}
         />
@@ -55,11 +89,7 @@ export default function LocationSearchField({ label, value, locations, onSelect,
                 type="button"
                 className={`location-search-option ${value?.id === location.id ? "selected" : ""}`}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onSelect(location.id);
-                  setQuery(location.label);
-                  setOpen(false);
-                }}
+                onClick={() => commitSelection(location)}
               >
                 <strong>{location.label}</strong>
                 <span>{location.area}</span>
