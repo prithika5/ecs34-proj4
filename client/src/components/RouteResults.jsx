@@ -1,291 +1,178 @@
-import { useEffect, useState } from "react";
 import { getLocationOptionById } from "@shared/routeOptions.js";
-import CuteCampusIcon from "./CuteCampusIcon.jsx";
 
 function formatMode(mode) {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
-function getModeIcon(mode) {
-  if (mode === "bike") {
-    return "bike";
-  }
-
-  if (mode === "shuttle") {
-    return "shuttle";
-  }
-
-  return "walk";
-}
-
 function getTradeoffCopy(route, comparisonRoute) {
-  if (route.highlights?.tradeoffLabel && comparisonRoute) {
-    return `${route.highlights.tradeoffLabel} compared with ${formatMode(comparisonRoute.optimization).toLowerCase()}.`;
-  }
-
   if (!comparisonRoute) {
-    return "Best available route for the selected mode.";
+    return "Best available route from the current planner run.";
   }
 
   if (route.optimization === "fastest") {
-    return "Faster arrival with a slightly longer trip.";
+    return `Fastest arrives in ${route.totals.time} instead of ${comparisonRoute.totals.time}, with a slightly longer line on the map.`;
   }
 
-  return "Less distance with a slightly slower arrival.";
+  return `Shortest keeps the trip to ${route.totals.distance} instead of ${comparisonRoute.totals.distance}, with a slower arrival.`;
 }
 
-function formatModePreference(modePreference) {
-  if (!modePreference || modePreference === "any") {
-    return "Any mode";
+function buildBreakdownSummary(breakdown = []) {
+  if (!breakdown.length) {
+    return "No mode breakdown yet.";
   }
 
-  return `${formatMode(modePreference)} only`;
+  return breakdown
+    .map((entry) => `${entry.label} ${entry.distance}`)
+    .join(" · ");
+}
+
+function getPrimaryMode(route) {
+  if (route.breakdown?.length) {
+    return route.breakdown
+      .slice()
+      .sort((left, right) => {
+        if ((right.rawDistance || 0) !== (left.rawDistance || 0)) {
+          return (right.rawDistance || 0) - (left.rawDistance || 0);
+        }
+
+        return (right.rawTime || 0) - (left.rawTime || 0);
+      })[0]?.mode;
+  }
+
+  return route.highlights?.dominantMode || "walk";
 }
 
 export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
-  const startLocation = getLocationOptionById(formState?.start);
-  const endLocation = getLocationOptionById(formState?.end);
-  const [navigationActive, setNavigationActive] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [locationStatus, setLocationStatus] = useState("Location idle");
-
-  useEffect(() => {
-    setNavigationActive(false);
-    setCurrentStepIndex(0);
-    setLocationStatus("Location idle");
-  }, [route?.summary, route?.optimization]);
-
-  useEffect(() => {
-    if (!navigationActive) {
-      return;
-    }
-
-    if (!globalThis.navigator?.geolocation) {
-      setLocationStatus("Location unavailable in this browser");
-      return;
-    }
-
-    setLocationStatus("Checking current location");
-
-    globalThis.navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocationStatus(
-          `Location ready near ${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)}`
-        );
-      },
-      () => {
-        setLocationStatus("Location permission not granted");
-      },
-      { enableHighAccuracy: false, timeout: 4000 }
-    );
-  }, [navigationActive]);
+  const startLocation = getLocationOptionById(formState.start);
+  const endLocation = getLocationOptionById(formState.end);
+  const primaryMode = getPrimaryMode(route || {});
 
   if (loading) {
     return (
-      <section className="results-shell">
-        <section className="results-panel empty">
-          <div className="status-block">
-            <span className="status-pulse" />
-            <p className="eyebrow">Finding route</p>
-            <h2>Checking the best path now.</h2>
-            <p>Crunching graph weights and route tradeoffs.</p>
-          </div>
-        </section>
-      </section>
+      <aside className="floating-panel trip-panel">
+        <div className="trip-card loading">
+          <p className="panel-kicker">Finding route</p>
+          <h2>Computing the best path.</h2>
+          <p>Pulling a fresh route from the planner and shaping it for the map.</p>
+        </div>
+      </aside>
     );
   }
 
   if (error) {
     return (
-      <section className="results-shell">
-        <section className="results-panel">
-          <p className="eyebrow">Route status</p>
-          <h2>We could not build this route.</h2>
+      <aside className="floating-panel trip-panel">
+        <div className="trip-card error">
+          <p className="panel-kicker">Route status</p>
+          <h2>Trip unavailable</h2>
           <p className="message error">{error}</p>
-        </section>
-      </section>
+        </div>
+      </aside>
     );
   }
 
   if (!route) {
     return (
-      <section className="results-shell">
-        <section className="results-panel empty">
-          <p className="eyebrow">Route preview</p>
-          <h2>Your route will appear here.</h2>
-          <p>Search a trip to see the summary, compare card, and step timeline.</p>
-        </section>
-      </section>
+      <aside className="floating-panel trip-panel">
+        <div className="trip-card empty">
+          <p className="panel-kicker">Trip card</p>
+          <h2>Select two places to preview a route.</h2>
+          <p>The summary, route line, and step timeline will appear here after a search.</p>
+        </div>
+      </aside>
     );
   }
 
-  const currentStep = route.steps[currentStepIndex];
-  const navigationComplete = currentStepIndex >= route.steps.length - 1;
-  const dominantMode = route.highlights?.dominantMode ? formatMode(route.highlights.dominantMode) : "Mixed";
-  const tradeoffCopy = getTradeoffCopy(route, comparisonRoute);
-  const modePreferenceLabel = formatModePreference(route.modePreference);
-
   return (
-    <section className="results-shell">
-      <section className="results-panel summary-card">
-        <p className="eyebrow">Route summary</p>
-        <div className="result-heading">
+    <aside className="floating-panel trip-panel">
+      <section className="trip-card summary">
+        <div className="trip-card-topline">
           <div>
-            <h2>{route.summary}</h2>
-            <div className="route-endpoints">
-              <div>
-                <span>Start</span>
-                <strong>{startLocation?.label}</strong>
-              </div>
-              <div>
-                <span>End</span>
-                <strong>{endLocation?.label}</strong>
-              </div>
-            </div>
+            <p className="panel-kicker">Trip summary</p>
+            <h2>{route.totals.time}</h2>
           </div>
-          <span className={`mode-pill ${route.optimization}`}>{formatMode(route.optimization)}</span>
+          <span className={`optimization-badge ${route.optimization}`}>{formatMode(route.optimization)}</span>
         </div>
-        <div className="stats">
+
+        <div className="trip-summary-route">
+          <div>
+            <span>Start</span>
+            <strong>{startLocation?.label}</strong>
+          </div>
+          <div className="trip-route-divider" />
+          <div>
+            <span>Destination</span>
+            <strong>{endLocation?.label}</strong>
+          </div>
+        </div>
+
+        <div className="trip-stat-grid">
           <article>
-            <span>Total distance</span>
+            <span>Distance</span>
             <strong>{route.totals.distance}</strong>
           </article>
           <article>
-            <span>Total time</span>
-            <strong>{route.totals.time}</strong>
+            <span>Mode</span>
+            <strong>{formatMode(primaryMode)}</strong>
           </article>
-          <article>
-            <span>Dominant mode</span>
-            <strong>{dominantMode}</strong>
-          </article>
-          <article>
-            <span>Requested</span>
-            <strong>{modePreferenceLabel}</strong>
-          </article>
+        </div>
+
+        <div className="trip-breakdown">
+          <span>Mode breakdown</span>
+          <p>{buildBreakdownSummary(route.breakdown)}</p>
         </div>
       </section>
 
       {comparisonRoute ? (
-        <section className="results-panel comparison-card">
-          <p className="eyebrow">Compare modes</p>
-          <div className="comparison-grid">
-            <article className="comparison-primary">
+        <section className="trip-card compare">
+          <div className="compact-card-header">
+            <p className="panel-kicker">Compare modes</p>
+            <span>{comparisonRoute.totals.time}</span>
+          </div>
+          <div className="compare-grid">
+            <article>
               <span>Selected</span>
               <strong>{formatMode(route.optimization)}</strong>
-              <p>
-                {route.totals.distance} · {route.totals.time}
-              </p>
             </article>
             <article>
-              <span>Alternative</span>
+              <span>Alternate</span>
               <strong>{formatMode(comparisonRoute.optimization)}</strong>
-              <p>
-                {comparisonRoute.totals.distance} · {comparisonRoute.totals.time}
-              </p>
             </article>
           </div>
-          <p className="comparison-note">{tradeoffCopy}</p>
+          <p className="compact-note">{getTradeoffCopy(route, comparisonRoute)}</p>
         </section>
       ) : null}
 
-      <section className="results-panel why-card">
-        <p className="eyebrow">Why this route?</p>
+      <section className="trip-card why">
+        <div className="compact-card-header">
+          <p className="panel-kicker">Why this route?</p>
+          <span>{route.steps.length} steps</span>
+        </div>
         <p>{route.explanation}</p>
-        {route.highlights ? <p className="explanation-subcopy">{route.highlights.campusFeel}</p> : null}
       </section>
 
-      <section className="results-panel steps-card">
-        <div className="steps-header">
-          <div>
-            <p className="eyebrow">Route steps</p>
-            <h3>{navigationActive ? "Live step focus" : "Timeline"}</h3>
-          </div>
-          <span className={`nav-status-pill ${navigationActive ? "live" : "idle"}`}>
-            {navigationActive ? `Step ${Math.min(currentStepIndex + 1, route.steps.length)}` : `${route.steps.length} steps`}
-          </span>
+      <section className="trip-card steps">
+        <div className="compact-card-header">
+          <p className="panel-kicker">Route steps</p>
+          <span>{route.summary}</span>
         </div>
-
-        {navigationActive ? (
-          <div className="navigation-inline">
-            <div className="navigation-meta">
-              <span>{locationStatus}</span>
-              <span>
-                {Math.min(currentStepIndex + 1, route.steps.length)} of {route.steps.length}
-              </span>
-            </div>
-            <div className="navigation-step">
-              <CuteCampusIcon variant={getModeIcon(currentStep.mode)} className="navigation-step-icon" />
-              <div>
-                <strong>{currentStep.instruction}</strong>
-                <p>
-                  {formatMode(currentStep.mode)} · {currentStep.distance} · {currentStep.time}
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <ol className="step-list">
+        <ol className="timeline">
           {route.steps.map((step) => (
-            <li key={step.index}>
-              <span className="step-marker">{step.index}</span>
-              <div className="step-card">
-                <div className="step-card-topline">
-                  <CuteCampusIcon variant={getModeIcon(step.mode)} className="step-campus-icon" />
-                  <span className="step-mode">{formatMode(step.mode)}</span>
+            <li key={step.index} className="timeline-step">
+              <span className={`timeline-index ${step.mode}`}>{step.index}</span>
+              <div className="timeline-body">
+                <div className="timeline-row">
+                  <span className="timeline-mode">{formatMode(step.mode)}</span>
+                  <span className="timeline-meta">
+                    {step.distance} · {step.time}
+                  </span>
                 </div>
                 <strong>{step.instruction}</strong>
-                <p>{step.distance} · {step.time}</p>
               </div>
             </li>
           ))}
         </ol>
-
-        <div className="navigation-actions compact">
-          {!navigationActive ? (
-            <button type="button" className="secondary-button" onClick={() => setNavigationActive(true)}>
-              Start navigation
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => setCurrentStepIndex((index) => Math.max(index - 1, 0))}
-                disabled={currentStepIndex === 0}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (navigationComplete) {
-                    setNavigationActive(false);
-                    setCurrentStepIndex(0);
-                    setLocationStatus("Navigation finished");
-                    return;
-                  }
-
-                  setCurrentStepIndex((index) => Math.min(index + 1, route.steps.length - 1));
-                }}
-              >
-                {navigationComplete ? "Finish" : "Next step"}
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => {
-              setNavigationActive(false);
-              setCurrentStepIndex(0);
-              setLocationStatus("Location idle");
-            }}
-          >
-            Reset
-          </button>
-        </div>
       </section>
-    </section>
+    </aside>
   );
 }

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { getLocationOptionById, locationOptions } from "@shared/routeOptions.js";
+import MapView from "./components/MapView.jsx";
 import RouteForm from "./components/RouteForm.jsx";
 import RouteResults from "./components/RouteResults.jsx";
 import { requestRoute } from "./lib/api.js";
@@ -6,25 +8,35 @@ import { requestRoute } from "./lib/api.js";
 const defaultForm = {
   start: "aggie_works",
   end: "west_village",
-  optimization: "shortest",
+  optimization: "fastest",
   modePreference: "any"
 };
 
 export default function App() {
+  const activeLocations = useMemo(() => locationOptions.filter((location) => location.status === "active"), []);
   const [formState, setFormState] = useState(defaultForm);
+  const [activeField, setActiveField] = useState("start");
   const [route, setRoute] = useState(null);
   const [comparisonRoute, setComparisonRoute] = useState(null);
   const [error, setError] = useState("");
   const [validationError, setValidationError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleChange(event) {
-    const { name, value } = event.target;
+  const startLocation = getLocationOptionById(formState.start);
+  const endLocation = getLocationOptionById(formState.end);
 
+  function updateLocation(field, locationId) {
+    setValidationError("");
     setFormState((current) => ({
       ...current,
-      [name]: value
+      [field]: locationId
     }));
+  }
+
+  function handleMapPick(locationId) {
+    const field = activeField;
+    updateLocation(field, locationId);
+    setActiveField(field === "start" ? "end" : "start");
   }
 
   async function handleSubmit(event) {
@@ -35,19 +47,19 @@ export default function App() {
     if (formState.start === formState.end) {
       setRoute(null);
       setComparisonRoute(null);
-      setValidationError("Start and end need to be different so the route tradeoff is meaningful.");
+      setValidationError("Start and destination need to be different.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const alternativeOptimization = formState.optimization === "fastest" ? "shortest" : "fastest";
+      const alternateOptimization = formState.optimization === "fastest" ? "shortest" : "fastest";
       const [nextRoute, alternateRoute] = await Promise.all([
         requestRoute(formState),
         requestRoute({
           ...formState,
-          optimization: alternativeOptimization
+          optimization: alternateOptimization
         })
       ]);
 
@@ -63,32 +75,52 @@ export default function App() {
   }
 
   return (
-    <main className="page-shell">
-      <header className="app-header">
+    <main className="map-app-shell">
+      <MapView
+        locations={activeLocations}
+        startLocation={startLocation}
+        endLocation={endLocation}
+        route={route}
+        activeField={activeField}
+        onMapPick={handleMapPick}
+      />
+
+      <header className="floating-panel app-topbar">
         <div className="brand-lockup">
           <img src="/logo.png" alt="RouteHacker logo" className="brand-logo" />
           <div>
-            <p className="brand-kicker">RouteHacker</p>
-            <p className="brand-subtitle">Davis route planning</p>
+            <p className="brand-title">RouteHacker</p>
+            <p className="brand-subtitle">UC Davis transportation planner</p>
           </div>
         </div>
-        <span className="header-chip">Live route planner</span>
+        <span className="topbar-chip">Live map</span>
       </header>
 
-      <section className="planner-shell">
-        <div className="planner-intro card">
-          <p className="eyebrow">Route search</p>
-          <h1>Choose a start, destination, and route mode.</h1>
-        </div>
-
-        <RouteForm
-          formState={formState}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          loading={loading}
-          validationError={validationError}
-        />
-      </section>
+      <RouteForm
+        startLocation={startLocation}
+        endLocation={endLocation}
+        locations={activeLocations}
+        optimization={formState.optimization}
+        activeField={activeField}
+        loading={loading}
+        validationError={validationError}
+        onLocationSelect={updateLocation}
+        onFieldActivate={setActiveField}
+        onOptimizationChange={(optimization) =>
+          setFormState((current) => ({
+            ...current,
+            optimization
+          }))
+        }
+        onSwap={() =>
+          setFormState((current) => ({
+            ...current,
+            start: current.end,
+            end: current.start
+          }))
+        }
+        onSubmit={handleSubmit}
+      />
 
       <RouteResults route={route} comparisonRoute={comparisonRoute} error={error} loading={loading} formState={formState} />
     </main>

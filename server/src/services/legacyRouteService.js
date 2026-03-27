@@ -1,5 +1,6 @@
 import { graph } from "../data/graph.js";
 import { createApiError } from "../lib/errors.js";
+import { getLocationOptionById } from "../../../shared/routeOptions.js";
 
 const validOptimizations = new Set(["shortest", "fastest"]);
 const validModePreferences = new Set(["any", "walk", "bike", "shuttle"]);
@@ -110,6 +111,54 @@ function buildHighlights(steps, optimization, modePreference) {
   };
 }
 
+function buildGeometry(pathSteps, start) {
+  const coordinates = [];
+  const startLocation = getLocationOptionById(start);
+
+  if (startLocation?.coordinates) {
+    coordinates.push([startLocation.coordinates.longitude, startLocation.coordinates.latitude]);
+  }
+
+  for (const step of pathSteps) {
+    const nextLocation = getLocationOptionById(step.to);
+    if (nextLocation?.coordinates) {
+      coordinates.push([nextLocation.coordinates.longitude, nextLocation.coordinates.latitude]);
+    }
+  }
+
+  return {
+    type: "LineString",
+    coordinates
+  };
+}
+
+function buildBreakdown(steps) {
+  const breakdown = new Map();
+
+  for (const step of steps) {
+    if (!breakdown.has(step.mode)) {
+      breakdown.set(step.mode, {
+        mode: step.mode,
+        label: toTitleCase(step.mode),
+        stepCount: 0,
+        rawDistance: 0,
+        rawTime: 0
+      });
+    }
+
+    const summary = breakdown.get(step.mode);
+    summary.stepCount += 1;
+    summary.rawDistance += step.distanceValue;
+    summary.rawTime += step.timeValue;
+  }
+
+  return Array.from(breakdown.values()).map((summary) => ({
+    ...summary,
+    distance: formatDistance(summary.rawDistance),
+    time: formatTime(summary.rawTime)
+  }));
+}
+
 export function computeLegacyRoute({ start, end, optimization, modePreference = "any" }) {
   if (!graph.nodes[start] || !graph.nodes[end]) {
     throw createApiError(400, "INVALID_LOCATION", "Start and end must be valid RouteHacker locations.");
@@ -199,7 +248,11 @@ export function computeLegacyRoute({ start, end, optimization, modePreference = 
     instruction: `Take the ${step.label} from ${graph.nodes[step.from].label} to ${graph.nodes[step.to].label}.`,
     from: graph.nodes[step.from].label,
     to: graph.nodes[step.to].label,
+    fromId: step.from,
+    toId: step.to,
     mode: step.mode,
+    distanceValue: step.distance,
+    timeValue: step.time,
     distance: formatDistance(step.distance),
     time: formatTime(step.time)
   }));
@@ -215,7 +268,9 @@ export function computeLegacyRoute({ start, end, optimization, modePreference = 
       rawDistance: Number(totals.distance.toFixed(2)),
       rawTime: totals.time
     },
+    geometry: buildGeometry(steps, start),
     steps: routeSteps,
+    breakdown: buildBreakdown(routeSteps),
     explanation: explainRoute({ steps: routeSteps }, optimization, modePreference),
     highlights: buildHighlights(routeSteps, optimization, modePreference)
   };

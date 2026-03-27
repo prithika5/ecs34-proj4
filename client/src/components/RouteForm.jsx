@@ -1,86 +1,83 @@
-import { locationOptions, optimizationModes, transportationModes } from "@shared/routeOptions.js";
+import { optimizationModes } from "@shared/routeOptions.js";
+import LocationSearchField from "./LocationSearchField.jsx";
 
-export default function RouteForm({ formState, onChange, onSubmit, loading, validationError }) {
-  const activeLocations = locationOptions.filter((location) => location.status === "active");
-  const handleSwap = () => {
-    onChange({ target: { name: "start", value: formState.end } });
-    onChange({ target: { name: "end", value: formState.start } });
-  };
-
+export default function RouteForm({
+  startLocation,
+  endLocation,
+  locations,
+  optimization,
+  activeField,
+  loading,
+  validationError,
+  onLocationSelect,
+  onFieldActivate,
+  onOptimizationChange,
+  onSwap,
+  onSubmit
+}) {
   return (
-    <form className="route-form card" onSubmit={onSubmit}>
-      <div className="form-intro">
-        <p className="eyebrow">Planner</p>
-        <h2>Search a route</h2>
-        <p className="form-helper">Pick two stops and choose the route mode that matters most.</p>
+    <section className="floating-panel planner-panel">
+      <div className="planner-panel-header">
+        <div>
+          <p className="panel-kicker">Route planner</p>
+          <h1>Find a Davis trip.</h1>
+        </div>
+        <span className="planner-engine-pill">Real planner</span>
       </div>
 
-      <div className="route-inputs">
-        <div className="field-grid compact">
-          <label>
-            <span>Start</span>
-            <select name="start" value={formState.start} onChange={onChange}>
-              {activeLocations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <form className="planner-form" onSubmit={onSubmit}>
+        <div className="planner-fields">
+          <LocationSearchField
+            label="Start"
+            value={startLocation}
+            locations={locations}
+            active={activeField === "start"}
+            onActivate={() => onFieldActivate("start")}
+            onSelect={(locationId) => onLocationSelect("start", locationId)}
+          />
 
-          <label>
-            <span>End</span>
-            <select name="end" value={formState.end} onChange={onChange}>
-              {activeLocations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <button type="button" className="swap-button" onClick={onSwap} aria-label="Swap start and destination">
+            Swap
+          </button>
+
+          <LocationSearchField
+            label="Destination"
+            value={endLocation}
+            locations={locations}
+            active={activeField === "end"}
+            onActivate={() => onFieldActivate("end")}
+            onSelect={(locationId) => onLocationSelect("end", locationId)}
+          />
         </div>
 
-        <button type="button" className="swap-button" onClick={handleSwap} aria-label="Swap start and end">
-          Swap
+        <div className="mode-control">
+          <span>Optimization</span>
+          <div className="mode-segmented" role="radiogroup" aria-label="Optimization">
+            {optimizationModes.map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                className={optimization === mode.id ? "selected" : ""}
+                aria-pressed={optimization === mode.id}
+                onClick={() => onOptimizationChange(mode.id)}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="planner-meta-row">
+          <p>Search by name or tap the map to fill the highlighted field.</p>
+          <span>{activeField === "end" ? "Picking destination" : "Picking start"}</span>
+        </div>
+
+        {validationError ? <p className="message error">{validationError}</p> : null}
+
+        <button type="submit" className="primary-cta" disabled={loading}>
+          {loading ? "Finding route..." : "Get route"}
         </button>
-      </div>
-
-      <fieldset className="mode-toggle">
-        <legend>Optimization</legend>
-        <div className="mode-segmented">
-          {optimizationModes.map((mode) => (
-            <label key={mode.id} className={formState.optimization === mode.id ? "selected" : ""}>
-              <input
-                type="radio"
-                name="optimization"
-                value={mode.id}
-                checked={formState.optimization === mode.id}
-                onChange={onChange}
-              />
-              <span>{mode.label}</span>
-            </label>
-          ))}
-        </div>
-        <small>Choose the shortest trip or the fastest arrival.</small>
-      </fieldset>
-
-      <label className="transport-preference">
-        <span>Transportation</span>
-        <select name="modePreference" aria-label="Transportation" value={formState.modePreference} onChange={onChange}>
-          {transportationModes.map((mode) => (
-            <option key={mode.id} value={mode.id}>
-              {mode.label}
-            </option>
-          ))}
-        </select>
-        <small>Optional filter if you want to stay with one mode.</small>
-      </label>
-
-      {validationError ? <p className="message error">{validationError}</p> : null}
-
-      <button type="submit" disabled={loading}>
-        {loading ? "Finding best route..." : "See best route"}
-      </button>
-    </form>
+      </form>
+    </section>
   );
 }

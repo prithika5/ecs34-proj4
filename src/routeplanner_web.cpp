@@ -171,6 +171,32 @@ std::string BuildCampusFeel(const std::string &optimization) {
     return "This route comes from the C++ planner's shortest-distance search over the street network.";
 }
 
+std::string BuildGeometryJSON(std::shared_ptr<COpenStreetMap> map,
+                              const std::vector<CTransportationPlanner::TTripStep> &tripSteps) {
+    std::ostringstream geometryJSON;
+    geometryJSON << "{\"type\":\"LineString\",\"coordinates\":[";
+
+    bool wroteCoordinate = false;
+    for (const auto &tripStep : tripSteps) {
+        auto node = map->NodeByID(tripStep.second);
+        if (!node) {
+            continue;
+        }
+
+        if (wroteCoordinate) {
+            geometryJSON << ",";
+        }
+
+        geometryJSON << "["
+                     << std::fixed << std::setprecision(6) << node->Location().DLongitude << ","
+                     << std::fixed << std::setprecision(6) << node->Location().DLatitude << "]";
+        wroteCoordinate = true;
+    }
+
+    geometryJSON << "]}";
+    return geometryJSON.str();
+}
+
 void WriteErrorJSON(const std::string &code, const std::string &message) {
     std::cout << "{\"error\":{\"code\":\"" << EscapeJSONString(code) << "\",\"message\":\""
               << EscapeJSONString(message) << "\"}}";
@@ -271,6 +297,52 @@ int Main(const std::string &dataDirectory) {
         totalDistanceMiles += SGeographicUtils::HaversineDistanceInMiles(fromNode->Location(), toNode->Location());
     }
 
+    double walkDistance = 0.0;
+    double bikeDistance = 0.0;
+    double shuttleDistance = 0.0;
+    double walkMinutes = 0.0;
+    double bikeMinutes = 0.0;
+    double shuttleMinutes = 0.0;
+    std::size_t walkSteps = 0;
+    std::size_t bikeSteps = 0;
+    std::size_t shuttleSteps = 0;
+
+    for (std::size_t index = 1; index < tripSteps.size(); index++) {
+        auto fromNode = map->NodeByID(tripSteps[index - 1].second);
+        auto toNode = map->NodeByID(tripSteps[index].second);
+
+        if (!fromNode || !toNode) {
+            continue;
+        }
+
+        const auto segmentDistance = SGeographicUtils::HaversineDistanceInMiles(fromNode->Location(), toNode->Location());
+        const auto segmentMode = ModeToAPIName(tripSteps[index].first);
+        double speed = config->WalkSpeed();
+
+        if (segmentMode == "bike") {
+            speed = config->BikeSpeed();
+            bikeDistance += segmentDistance;
+        }
+        else if (segmentMode == "shuttle") {
+            speed = config->DefaultSpeedLimit();
+            shuttleDistance += segmentDistance;
+        }
+        else {
+            walkDistance += segmentDistance;
+        }
+
+        const auto segmentMinutes = speed > 0.0 ? (segmentDistance / speed) * 60.0 : 0.0;
+        if (segmentMode == "bike") {
+            bikeMinutes += segmentMinutes;
+        }
+        else if (segmentMode == "shuttle") {
+            shuttleMinutes += segmentMinutes;
+        }
+        else {
+            walkMinutes += segmentMinutes;
+        }
+    }
+
     std::vector<std::string> descriptions;
     if (!planner.GetPathDescription(tripSteps, descriptions)) {
         WriteErrorJSON("DESCRIPTION_ERROR", "The C++ planner could not describe the route.");
@@ -322,6 +394,16 @@ int Main(const std::string &dataDirectory) {
             }
         }
 
+        if (mode == "bike") {
+            bikeSteps++;
+        }
+        else if (mode == "shuttle") {
+            shuttleSteps++;
+        }
+        else {
+            walkSteps++;
+        }
+
         if (index > 0) {
             stepsJSON << ",";
         }
@@ -364,6 +446,41 @@ int Main(const std::string &dataDirectory) {
     }
 
     const double totalMinutes = totalTimeHours * 60.0;
+    const auto geometryJSON = BuildGeometryJSON(map, tripSteps);
+
+    std::ostringstream breakdownJSON;
+    breakdownJSON << "[";
+    bool wroteBreakdown = false;
+
+    const auto appendBreakdown = [&](const std::string &mode,
+                                     const std::string &label,
+                                     std::size_t stepCount,
+                                     double distanceMiles,
+                                     double timeMinutes) {
+        if (!stepCount && distanceMiles <= 0.0 && timeMinutes <= 0.0) {
+            return;
+        }
+
+        if (wroteBreakdown) {
+            breakdownJSON << ",";
+        }
+
+        breakdownJSON << "{"
+                      << "\"mode\":\"" << EscapeJSONString(mode) << "\","
+                      << "\"label\":\"" << EscapeJSONString(label) << "\","
+                      << "\"stepCount\":" << stepCount << ","
+                      << "\"distance\":\"" << EscapeJSONString(FormatDistance(distanceMiles)) << "\","
+                      << "\"time\":\"" << EscapeJSONString(FormatTimeMinutes(timeMinutes)) << "\","
+                      << "\"rawDistance\":" << std::fixed << std::setprecision(2) << distanceMiles << ","
+                      << "\"rawTime\":" << std::llround(timeMinutes)
+                      << "}";
+        wroteBreakdown = true;
+    };
+
+    appendBreakdown("walk", "Walk", walkSteps, walkDistance, walkMinutes);
+    appendBreakdown("bike", "Bike", bikeSteps, bikeDistance, bikeMinutes);
+    appendBreakdown("shuttle", "Shuttle", shuttleSteps, shuttleDistance, shuttleMinutes);
+    breakdownJSON << "]";
 
     std::cout << "{"
               << "\"engine\":\"cpp\","
@@ -376,7 +493,9 @@ int Main(const std::string &dataDirectory) {
               << "\"rawDistance\":" << std::fixed << std::setprecision(2) << totalDistanceMiles << ","
               << "\"rawTime\":" << std::llround(totalMinutes)
               << "},"
+              << "\"geometry\":" << geometryJSON << ","
               << "\"steps\":" << stepsJSON.str() << ","
+              << "\"breakdown\":" << breakdownJSON.str() << ","
               << "\"explanation\":\"" << EscapeJSONString(BuildExplanation(request.DOptimization, dominantMode)) << "\","
               << "\"highlights\":{"
               << "\"dominantMode\":\"" << EscapeJSONString(dominantMode) << "\","

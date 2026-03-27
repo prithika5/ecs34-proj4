@@ -13,8 +13,9 @@ RouteHacker is a full-stack routing app layered on top of this repository's orig
 - Express backend in `server/`
 - Real C++ transportation planner from the ECS 34 codebase
 - OpenStreetMap + bus-system routing data from `data/`
+- Full-screen Mapbox map with floating trip planning UI
 - Shortest-vs-fastest route computation
-- Optional transportation preference in the web UI
+- Searchable Davis pickup and destination selection with map click support
 - Legacy seeded graph fallback for unsupported/demo-only cases
 - Frontend and backend tests
 - Dev container support for both the C++ and web stacks
@@ -23,13 +24,13 @@ RouteHacker is a full-stack routing app layered on top of this repository's orig
 
 ### Request Flow
 
-1. The React app submits `start`, `end`, `optimization`, and `modePreference` to `POST /api/route`.
+1. The React app lets the user choose a start and destination by search or map click, then submits `start`, `end`, `optimization`, and `modePreference` to `POST /api/route`.
 2. The Express backend validates the request in [server/src/routes/routeRouter.js](/workspaces/RouteApp-AggieWorks/server/src/routes/routeRouter.js).
 3. The route service in [server/src/services/routeService.js](/workspaces/RouteApp-AggieWorks/server/src/services/routeService.js) chooses an engine:
    - `cpp`: use the real ECS 34 planner via subprocess
    - `demo` / `demo-fallback`: use the legacy seeded graph
 4. The C++ adapter executable [src/routeplanner_web.cpp](/workspaces/RouteApp-AggieWorks/src/routeplanner_web.cpp) loads `davis.osm`, `stops.csv`, and `routes.csv`, computes a route, and returns JSON.
-5. Express forwards the normalized route payload back to the frontend.
+5. Express forwards the normalized route payload back to the frontend, including route geometry for the map polyline and a compact transportation breakdown for the floating trip card.
 
 ### Why The Fallback Still Exists
 
@@ -57,6 +58,15 @@ From the repo root:
 
 ```bash
 npm install
+```
+
+### Set Environment Variables
+
+Create `client/.env` from `client/.env.example` and set:
+
+```bash
+VITE_API_BASE_URL=http://localhost:3000
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_public_token
 ```
 
 ### Build The C++ Web Adapter
@@ -123,7 +133,9 @@ Success response includes:
 - `optimization`
 - `modePreference`
 - `totals`
+- `geometry`
 - `steps`
+- `breakdown`
 - `explanation`
 - `highlights`
 - `engine`

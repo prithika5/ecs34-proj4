@@ -15,6 +15,9 @@ describe("RouteHacker API", () => {
     expect(response.status).toBe(200);
     expect(response.body.summary).toContain("AggieWorks Studio");
     expect(response.body.steps.length).toBeGreaterThan(0);
+    expect(response.body.geometry.type).toBe("LineString");
+    expect(response.body.geometry.coordinates.length).toBeGreaterThan(1);
+    expect(Array.isArray(response.body.breakdown)).toBe(true);
   });
 
   it("produces different shortest and fastest routes", async () => {
