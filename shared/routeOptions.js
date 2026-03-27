@@ -1,12 +1,12 @@
 export const optimizationModes = [
   {
     id: "shortest",
-    label: "Shortest",
+    label: "Shortest distance",
     description: "Minimize total distance traveled."
   },
   {
     id: "fastest",
-    label: "Fastest",
+    label: "Fastest arrival",
     description: "Minimize total travel time."
   }
 ];

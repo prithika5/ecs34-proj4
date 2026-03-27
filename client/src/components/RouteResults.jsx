@@ -4,6 +4,10 @@ function formatMode(mode) {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
+function formatOptimizationLabel(optimization) {
+  return optimization === "shortest" ? "Shortest distance" : "Fastest arrival";
+}
+
 function formatInstruction(step) {
   const busMatch = step.instruction.match(/^Take Bus ([A-Za-z0-9]+) from stop \d+ to stop \d+$/);
 
@@ -142,7 +146,7 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
             <h2>{route.totals.time}</h2>
             <p className="trip-time-caption">{getTimeLabel(route)}</p>
           </div>
-          <span className={`optimization-badge ${route.optimization}`}>{formatMode(route.optimization)}</span>
+          <span className={`optimization-badge ${route.optimization}`}>{formatOptimizationLabel(route.optimization)}</span>
         </div>
 
         <div className="trip-summary-route">
@@ -188,11 +192,11 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <div className="compare-grid">
             <article>
               <span>Selected</span>
-              <strong>{formatMode(route.optimization)}</strong>
+              <strong>{formatOptimizationLabel(route.optimization)}</strong>
             </article>
             <article>
               <span>Alternate</span>
-              <strong>{formatMode(comparisonRoute.optimization)}</strong>
+              <strong>{formatOptimizationLabel(comparisonRoute.optimization)}</strong>
             </article>
           </div>
           <p className="compact-note">{getTradeoffCopy(route, comparisonRoute)}</p>
