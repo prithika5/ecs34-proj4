@@ -6,11 +6,9 @@ export default function RouteForm({
   endLocation,
   locations,
   optimization,
-  activeField,
   loading,
   validationError,
   onLocationSelect,
-  onFieldActivate,
   onOptimizationChange,
   onSwap,
   onSubmit
@@ -31,8 +29,8 @@ export default function RouteForm({
             label="Start"
             value={startLocation}
             locations={locations}
-            active={activeField === "start"}
-            onActivate={() => onFieldActivate("start")}
+            active={false}
+            onActivate={() => {}}
             onSelect={(locationId) => onLocationSelect("start", locationId)}
           />
 
@@ -44,8 +42,8 @@ export default function RouteForm({
             label="Destination"
             value={endLocation}
             locations={locations}
-            active={activeField === "end"}
-            onActivate={() => onFieldActivate("end")}
+            active={false}
+            onActivate={() => {}}
             onSelect={(locationId) => onLocationSelect("end", locationId)}
           />
         </div>
@@ -68,8 +66,8 @@ export default function RouteForm({
         </div>
 
         <div className="planner-meta-row">
-          <p>Search by name or tap the map to fill the highlighted field.</p>
-          <span>{activeField === "end" ? "Picking destination" : "Picking start"}</span>
+          <p>Search by name and compare the planner route directly on the map.</p>
+          <span>Map view only</span>
         </div>
 
         {validationError ? <p className="message error">{validationError}</p> : null}

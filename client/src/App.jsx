@@ -15,7 +15,6 @@ const defaultForm = {
 export default function App() {
   const activeLocations = useMemo(() => locationOptions.filter((location) => location.status === "active"), []);
   const [formState, setFormState] = useState(defaultForm);
-  const [activeField, setActiveField] = useState("start");
   const [route, setRoute] = useState(null);
   const [comparisonRoute, setComparisonRoute] = useState(null);
   const [error, setError] = useState("");
@@ -31,12 +30,6 @@ export default function App() {
       ...current,
       [field]: locationId
     }));
-  }
-
-  function handleMapPick(locationId) {
-    const field = activeField;
-    updateLocation(field, locationId);
-    setActiveField(field === "start" ? "end" : "start");
   }
 
   async function handleSubmit(event) {
@@ -81,8 +74,6 @@ export default function App() {
         startLocation={startLocation}
         endLocation={endLocation}
         route={route}
-        activeField={activeField}
-        onMapPick={handleMapPick}
       />
 
       <header className="floating-panel app-topbar">
@@ -101,11 +92,9 @@ export default function App() {
         endLocation={endLocation}
         locations={activeLocations}
         optimization={formState.optimization}
-        activeField={activeField}
         loading={loading}
         validationError={validationError}
         onLocationSelect={updateLocation}
-        onFieldActivate={setActiveField}
         onOptimizationChange={(optimization) =>
           setFormState((current) => ({
             ...current,

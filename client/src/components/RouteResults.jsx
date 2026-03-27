@@ -4,6 +4,16 @@ function formatMode(mode) {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
+function formatInstruction(step) {
+  const busMatch = step.instruction.match(/^Take Bus ([A-Za-z0-9]+) from stop \d+ to stop \d+$/);
+
+  if (busMatch) {
+    return `Ride Bus ${busMatch[1]} to the next shuttle transfer.`;
+  }
+
+  return step.instruction;
+}
+
 function getTradeoffCopy(route, comparisonRoute) {
   if (!comparisonRoute) {
     return "Best available route from the current planner run.";
@@ -40,6 +50,18 @@ function getPrimaryMode(route) {
   }
 
   return route.highlights?.dominantMode || "walk";
+}
+
+function getEngineLabel(engine) {
+  if (engine === "cpp") {
+    return "Real C++ route";
+  }
+
+  if (engine === "demo-fallback") {
+    return "Fallback route";
+  }
+
+  return "Demo route";
 }
 
 export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
@@ -121,6 +143,11 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
           <span>Mode breakdown</span>
           <p>{buildBreakdownSummary(route.breakdown)}</p>
         </div>
+
+        <div className="trip-engine-note">
+          <span>{getEngineLabel(route.engine)}</span>
+          {route.fallbackReason ? <p>{route.fallbackReason}</p> : null}
+        </div>
       </section>
 
       {comparisonRoute ? (
@@ -163,11 +190,9 @@ export default function RouteResults({ route, comparisonRoute, error, loading, f
               <div className="timeline-body">
                 <div className="timeline-row">
                   <span className="timeline-mode">{formatMode(step.mode)}</span>
-                  <span className="timeline-meta">
-                    {step.distance} · {step.time}
-                  </span>
+                  <span className="timeline-meta">{[step.distance, step.time].filter(Boolean).join(" · ") || "Transit segment"}</span>
                 </div>
-                <strong>{step.instruction}</strong>
+                <strong>{formatInstruction(step)}</strong>
               </div>
             </li>
           ))}

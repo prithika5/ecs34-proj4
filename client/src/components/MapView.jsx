@@ -5,24 +5,6 @@ const fallbackCenter = {
   longitude: -121.7565
 };
 
-function findNearestLocation(locations, longitude, latitude) {
-  let nearest = locations[0];
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  for (const location of locations) {
-    const longitudeDelta = location.coordinates.longitude - longitude;
-    const latitudeDelta = location.coordinates.latitude - latitude;
-    const score = longitudeDelta * longitudeDelta + latitudeDelta * latitudeDelta;
-
-    if (score < bestScore) {
-      nearest = location;
-      bestScore = score;
-    }
-  }
-
-  return nearest;
-}
-
 function getBounds(points) {
   if (!points.length) {
     return null;
@@ -62,9 +44,7 @@ export default function MapView({
   locations,
   startLocation,
   endLocation,
-  route,
-  activeField,
-  onMapPick
+  route
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -120,24 +100,19 @@ export default function MapView({
 
       glowLineRef.current = L.polyline([], {
         color: "#ffffff",
-        weight: 10,
-        opacity: 0.4,
+        weight: 16,
+        opacity: 0.8,
         lineCap: "round",
         lineJoin: "round"
       }).addTo(map);
 
       routeLineRef.current = L.polyline([], {
         color: "#111111",
-        weight: 5,
-        opacity: 0.9,
+        weight: 8,
+        opacity: 1,
         lineCap: "round",
         lineJoin: "round"
       }).addTo(map);
-
-      map.on("click", (event) => {
-        const nearest = findNearestLocation(locations, event.latlng.lng, event.latlng.lat);
-        onMapPick(nearest.id);
-      });
 
       mapRef.current = map;
     }
@@ -164,7 +139,7 @@ export default function MapView({
         mapRef.current = null;
       }
     };
-  }, [interactiveReady, locations, onMapPick]);
+  }, [interactiveReady]);
 
   useEffect(() => {
     if (!interactiveReady || !mapRef.current || !leafletRef.current) {
@@ -181,13 +156,11 @@ export default function MapView({
 
       const marker = L.marker([location.coordinates.latitude, location.coordinates.longitude], {
         icon: L.divIcon(createMarkerIcon(role))
-      })
-        .addTo(mapRef.current)
-        .on("click", () => onMapPick(location.id));
+      }).addTo(mapRef.current);
 
       markersRef.current.push(marker);
     }
-  }, [endLocation?.id, interactiveReady, locations, onMapPick, startLocation?.id]);
+  }, [endLocation?.id, interactiveReady, locations, startLocation?.id]);
 
   useEffect(() => {
     if (!interactiveReady || !mapRef.current || !routeLineRef.current || !glowLineRef.current) {
@@ -233,14 +206,7 @@ export default function MapView({
         <div className="map-grid" />
         <div className="map-static-card">
           <p>OpenStreetMap preview</p>
-          <span>The live map loads automatically outside tests, with no token or billing setup.</span>
-        </div>
-        <div className="map-static-pills">
-          {locations.map((location) => (
-            <button key={location.id} type="button" className="static-location-pill" onClick={() => onMapPick(location.id)}>
-              {location.label}
-            </button>
-          ))}
+          <span>The map displays the selected route and Davis anchor locations.</span>
         </div>
       </section>
     );
@@ -251,7 +217,7 @@ export default function MapView({
       <div ref={containerRef} className="map-canvas" />
       <div className="map-overlay-hint">
         <span className="map-active-dot" />
-        <p>{`Tap the map to set ${activeField === "end" ? "destination" : "start"}.`}</p>
+        <p>Map preview updates after each search.</p>
       </div>
     </section>
   );

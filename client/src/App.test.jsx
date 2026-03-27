@@ -22,6 +22,7 @@ describe("RouteHacker app", () => {
     render(<App />);
 
     fireEvent.focus(screen.getByLabelText("Destination"));
+    fireEvent.change(screen.getByLabelText("Destination"), { target: { value: "Aggie" } });
     fireEvent.click(screen.getByRole("button", { name: /AggieWorks Studio/i }));
     fireEvent.click(screen.getByRole("button", { name: /Get route/i }));
 
@@ -35,6 +36,7 @@ describe("RouteHacker app", () => {
         ok: true,
         json: async () => ({
           summary: "AggieWorks Studio to West Village",
+          engine: "cpp",
           optimization: "fastest",
           totals: { distance: "2.95 mi", time: "10 min", rawDistance: 2.95, rawTime: 10 },
           geometry: {
@@ -63,6 +65,7 @@ describe("RouteHacker app", () => {
         ok: true,
         json: async () => ({
           summary: "AggieWorks Studio to West Village",
+          engine: "cpp",
           optimization: "shortest",
           totals: { distance: "2.50 mi", time: "18 min", rawDistance: 2.5, rawTime: 18 },
           geometry: {
@@ -95,6 +98,7 @@ describe("RouteHacker app", () => {
 
     expect(await screen.findByRole("heading", { name: "10 min" })).toBeInTheDocument();
     expect(screen.getByText(/Mode breakdown/i)).toBeInTheDocument();
+    expect(screen.getByText(/Real C\+\+ route/i)).toBeInTheDocument();
     expect(screen.getByText(/Compare modes/i)).toBeInTheDocument();
     expect(screen.getByText(/Fastest mode leans on shuttle segments/i)).toBeInTheDocument();
   });
