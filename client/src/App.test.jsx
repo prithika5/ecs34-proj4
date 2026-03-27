@@ -82,8 +82,10 @@ describe("RouteHacker app", () => {
     expect(screen.getByText(/Shortest mode leans on walk segments/i)).toBeInTheDocument();
     expect(screen.getByText(/Compare modes/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Start navigation/i }));
-    expect(screen.getByRole("heading", { name: /Live step focus/i })).toBeInTheDocument();
-    expect(screen.getByText(/Location ready near/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /Live step focus/i })).toBeInTheDocument();
+      expect(screen.getByText(/Location ready near/i)).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByRole("button", { name: /Finish|Next step/i }));
   });
 

@@ -67,9 +67,11 @@ APP_LDFLAGS		= $(LDFLAGS)
 
 TRANSPLANNER_OBJ_FILES = $(OBJ_DIR)/transplanner.o $(OBJ_DIR)/DijkstraTransportationPlanner.o $(OBJ_DIR)/TransportationPlannerCommandLine.o $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/FileDataFactory.o $(OBJ_DIR)/FileDataSource.o $(OBJ_DIR)/FileDataSink.o $(OBJ_DIR)/StandardDataSource.o $(OBJ_DIR)/StandardDataSink.o $(OBJ_DIR)/StandardErrorDataSink.o $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/GeographicUtils.o
 SPEEDTEST_OBJ_FILES = $(OBJ_DIR)/speedtest.o $(OBJ_DIR)/DijkstraTransportationPlanner.o $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/FileDataFactory.o $(OBJ_DIR)/FileDataSource.o $(OBJ_DIR)/FileDataSink.o $(OBJ_DIR)/StandardDataSource.o $(OBJ_DIR)/StandardDataSink.o $(OBJ_DIR)/StandardErrorDataSink.o $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/GeographicUtils.o
+WEBPLANNER_OBJ_FILES = $(OBJ_DIR)/routeplanner_web.o $(OBJ_DIR)/DijkstraTransportationPlanner.o $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/FileDataFactory.o $(OBJ_DIR)/FileDataSource.o $(OBJ_DIR)/FileDataSink.o $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/GeographicUtils.o
 
 TRANSPLANNER_TARGET = $(BIN_DIR)/transplanner
 SPEEDTEST_TARGET = $(BIN_DIR)/speedtest
+WEBPLANNER_TARGET = $(BIN_DIR)/routeplanner_web
 
 
 all: directories \
@@ -87,6 +89,7 @@ all: directories \
 		run_tpcltest \
 		$(TRANSPLANNER_TARGET) \
 		$(SPEEDTEST_TARGET) \
+		$(WEBPLANNER_TARGET) \
 		coverage
 
 run_strtest: $(TEST_STR_TARGET)
@@ -188,6 +191,9 @@ $(TRANSPLANNER_TARGET): $(TRANSPLANNER_OBJ_FILES)
 
 $(SPEEDTEST_TARGET): $(SPEEDTEST_OBJ_FILES)
 	$(CXX) $(APP_CFLAGS) $(APP_CPPFLAGS) $(SPEEDTEST_OBJ_FILES) $(APP_LDFLAGS) -o $(SPEEDTEST_TARGET)
+
+$(WEBPLANNER_TARGET): $(WEBPLANNER_OBJ_FILES)
+	$(CXX) $(APP_CFLAGS) $(APP_CPPFLAGS) $(WEBPLANNER_OBJ_FILES) $(APP_LDFLAGS) -o $(WEBPLANNER_TARGET)
 
 $(TESTOBJ_DIR)/%.o: $(TESTSRC_DIR)/%.cpp
 	$(CXX) $(TEST_CFLAGS) $(TEST_CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@

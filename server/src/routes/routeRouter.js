@@ -11,7 +11,7 @@ routeRouter.get("/health", (_request, response) => {
   });
 });
 
-routeRouter.post("/route", (request, response, next) => {
+routeRouter.post("/route", async (request, response, next) => {
   const { start, end, optimization, modePreference } = request.body ?? {};
 
   if (!start || !end || !optimization) {
@@ -23,7 +23,7 @@ routeRouter.post("/route", (request, response, next) => {
   }
 
   try {
-    const route = computeRoute({ start, end, optimization, modePreference });
+    const route = await computeRoute({ start, end, optimization, modePreference });
     return response.json(route);
   } catch (error) {
     return next(error);
