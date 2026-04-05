@@ -12,13 +12,15 @@ export default function LocationSearchField({ label, value, locations, onSelect 
     const normalizedQuery = query.trim().toLowerCase();
 
     if (!normalizedQuery) {
-      return locations;
+      return locations.slice(0, 6);
     }
 
-    return locations.filter((location) => {
-      const haystack = `${location.label} ${location.area}`.toLowerCase();
-      return haystack.includes(normalizedQuery);
-    });
+    return locations
+      .filter((location) => {
+        const haystack = `${location.label} ${location.area}`.toLowerCase();
+        return haystack.includes(normalizedQuery);
+      })
+      .slice(0, 6);
   }, [locations, query]);
 
   function commitSelection(nextLocation) {
@@ -49,12 +51,12 @@ export default function LocationSearchField({ label, value, locations, onSelect 
 
   return (
     <label className="location-search-field active">
-      <span>{label}</span>
+      <span className="field-label">{label}</span>
       <div className="location-search-shell">
         <input
           aria-label={label}
           autoComplete="off"
-          placeholder={`Search ${label.toLowerCase()}`}
+          placeholder={label}
           value={query}
           onFocus={() => {
             setOpen(true);
@@ -95,7 +97,7 @@ export default function LocationSearchField({ label, value, locations, onSelect 
                 <span>{location.area}</span>
               </button>
             ))}
-            {filteredLocations.length === 0 ? <p className="location-search-empty">No Davis match found.</p> : null}
+            {filteredLocations.length === 0 ? <p className="location-search-empty">No match found.</p> : null}
           </div>
         ) : null}
       </div>

@@ -2,16 +2,20 @@ import { createApiError } from "../lib/errors.js";
 import { canUseCppPlanner, computeCppRoute } from "./cppPlannerService.js";
 import { computeLegacyRoute } from "./legacyRouteService.js";
 
+const CACHE_TTL_MS = 30_000;
+const routeCache = new Map();
+const inflightRequests = new Map();
+
 function getEngineMode() {
   if (process.env.ROUTE_ENGINE) {
     return process.env.ROUTE_ENGINE;
   }
 
   if (process.env.VITEST || process.env.NODE_ENV === "test") {
-    return "demo";
+    return "cpp";
   }
 
-  return "auto";
+  return "cpp";
 }
 
 function validateRequest({ start, end, optimization, modePreference = "any" }) {
@@ -40,22 +44,39 @@ function withEngineMetadata(route, engine, fallbackReason = "") {
   };
 }
 
-export async function computeRoute(request) {
-  validateRequest(request);
+function buildCacheKey(request) {
+  return JSON.stringify(request);
+}
 
+function readCache(cacheKey) {
+  const cached = routeCache.get(cacheKey);
+
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt < Date.now()) {
+    routeCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function writeCache(cacheKey, value) {
+  routeCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + CACHE_TTL_MS
+  });
+}
+
+async function computeFreshRoute(request) {
   const { modePreference = "any" } = request;
   const engineMode = getEngineMode();
   const shouldUseCpp = engineMode === "cpp" || (engineMode === "auto" && (await canUseCppPlanner(request)));
 
   if (shouldUseCpp) {
-    try {
-      return withEngineMetadata(await computeCppRoute(request), "cpp");
-    } catch (error) {
-      if (modePreference === "any") {
-        return withEngineMetadata(computeLegacyRoute(request), "demo-fallback", error.body?.error?.message || error.message);
-      }
-      throw error;
-    }
+    return withEngineMetadata(await computeCppRoute(request), "cpp");
   }
 
   return withEngineMetadata(
@@ -63,4 +84,31 @@ export async function computeRoute(request) {
     modePreference === "any" ? "demo-fallback" : "demo",
     modePreference === "any" ? "C++ planner unavailable, using legacy seeded graph." : ""
   );
+}
+
+export async function computeRoute(request) {
+  validateRequest(request);
+
+  const cacheKey = buildCacheKey(request);
+  const cached = readCache(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  if (inflightRequests.has(cacheKey)) {
+    return inflightRequests.get(cacheKey);
+  }
+
+  const pending = computeFreshRoute(request)
+    .then((route) => {
+      writeCache(cacheKey, route);
+      return route;
+    })
+    .finally(() => {
+      inflightRequests.delete(cacheKey);
+    });
+
+  inflightRequests.set(cacheKey, pending);
+  return pending;
 }

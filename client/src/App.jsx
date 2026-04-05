@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { startTransition, useMemo, useRef, useState } from "react";
 import { getLocationOptionById, locationOptions } from "@shared/routeOptions.js";
 import MapView from "./components/MapView.jsx";
 import RouteForm from "./components/RouteForm.jsx";
@@ -16,10 +16,11 @@ export default function App() {
   const activeLocations = useMemo(() => locationOptions.filter((location) => location.status === "active"), []);
   const [formState, setFormState] = useState(defaultForm);
   const [route, setRoute] = useState(null);
-  const [comparisonRoute, setComparisonRoute] = useState(null);
   const [error, setError] = useState("");
   const [validationError, setValidationError] = useState("");
   const [loading, setLoading] = useState(false);
+  const cacheRef = useRef(new Map());
+  const requestRef = useRef(null);
 
   const startLocation = getLocationOptionById(formState.start);
   const endLocation = getLocationOptionById(formState.end);
@@ -39,79 +40,86 @@ export default function App() {
 
     if (formState.start === formState.end) {
       setRoute(null);
-      setComparisonRoute(null);
-      setValidationError("Start and destination need to be different.");
+      setValidationError("Start and destination must be different.");
       return;
     }
 
+    requestRef.current?.abort();
+
+    const controller = new AbortController();
+    const cacheKey = JSON.stringify(formState);
+    const cachedRoute = cacheRef.current.get(cacheKey);
+
+    if (cachedRoute) {
+      startTransition(() => {
+        setRoute(cachedRoute);
+        setError("");
+      });
+      return;
+    }
+
+    requestRef.current = controller;
     setLoading(true);
 
     try {
-      const alternateOptimization = formState.optimization === "fastest" ? "shortest" : "fastest";
-      const [nextRoute, alternateRoute] = await Promise.all([
-        requestRoute(formState),
-        requestRoute({
-          ...formState,
-          optimization: alternateOptimization
-        })
-      ]);
+      const nextRoute = await requestRoute(formState, {
+        signal: controller.signal
+      });
 
-      setRoute(nextRoute);
-      setComparisonRoute(alternateRoute);
+      cacheRef.current.set(cacheKey, nextRoute);
+
+      startTransition(() => {
+        setRoute(nextRoute);
+        setError("");
+      });
     } catch (requestError) {
-      setRoute(null);
-      setComparisonRoute(null);
-      setError(requestError.message);
+      if (requestError.name === "AbortError") {
+        return;
+      }
+
+      startTransition(() => {
+        setRoute(null);
+        setError(requestError.message);
+      });
     } finally {
-      setLoading(false);
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
   return (
-    <main className="map-app-shell">
-      <MapView
-        locations={activeLocations}
-        startLocation={startLocation}
-        endLocation={endLocation}
-        route={route}
-      />
+    <main className="app-shell">
+      <MapView startLocation={startLocation} endLocation={endLocation} route={route} loading={loading} />
 
-      <header className="floating-panel app-topbar">
-        <div className="brand-lockup">
-          <img src="/logo.png" alt="RouteHacker logo" className="brand-logo" />
-          <div>
-            <p className="brand-title">RouteHacker</p>
-            <p className="brand-subtitle">UC Davis transportation planner</p>
-          </div>
-        </div>
-        <span className="topbar-chip">Live map</span>
-      </header>
+      <div className="app-layout">
+        <RouteForm
+          startLocation={startLocation}
+          endLocation={endLocation}
+          locations={activeLocations}
+          optimization={formState.optimization}
+          loading={loading}
+          validationError={validationError}
+          onLocationSelect={updateLocation}
+          onOptimizationChange={(optimization) =>
+            setFormState((current) => ({
+              ...current,
+              optimization
+            }))
+          }
+          onSwap={() =>
+            setFormState((current) => ({
+              ...current,
+              start: current.end,
+              end: current.start
+            }))
+          }
+          onSubmit={handleSubmit}
+        />
 
-      <RouteForm
-        startLocation={startLocation}
-        endLocation={endLocation}
-        locations={activeLocations}
-        optimization={formState.optimization}
-        loading={loading}
-        validationError={validationError}
-        onLocationSelect={updateLocation}
-        onOptimizationChange={(optimization) =>
-          setFormState((current) => ({
-            ...current,
-            optimization
-          }))
-        }
-        onSwap={() =>
-          setFormState((current) => ({
-            ...current,
-            start: current.end,
-            end: current.start
-          }))
-        }
-        onSubmit={handleSubmit}
-      />
-
-      <RouteResults route={route} comparisonRoute={comparisonRoute} error={error} loading={loading} formState={formState} />
+        <RouteResults route={route} error={error} loading={loading} formState={formState} />
+      </div>
     </main>
   );
 }

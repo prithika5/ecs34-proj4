@@ -2,6 +2,8 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../app.js";
 
+process.env.ROUTE_ENGINE = "demo";
+
 const app = createApp();
 
 describe("RouteHacker API", () => {

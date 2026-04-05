@@ -14,38 +14,36 @@ export default function RouteForm({
   onSubmit
 }) {
   return (
-    <section className="floating-panel planner-panel">
-      <div className="planner-panel-header">
+    <section className="panel control-panel">
+      <div className="brand-block">
+        <img src="/logo.png" alt="RouteHacker logo" className="brand-logo" />
         <div>
-          <p className="panel-kicker">Route planner</p>
-          <h1>Find a Davis trip.</h1>
+          <p className="brand-title">RouteHacker</p>
+          <p className="brand-subtitle">UC Davis transportation planner</p>
         </div>
-        <span className="planner-engine-pill">Real planner</span>
       </div>
 
       <form className="planner-form" onSubmit={onSubmit}>
-        <div className="planner-fields">
-          <LocationSearchField
-            label="Start"
-            value={startLocation}
-            locations={locations}
-            onSelect={(locationId) => onLocationSelect("start", locationId)}
-          />
+        <LocationSearchField
+          label="Start"
+          value={startLocation}
+          locations={locations}
+          onSelect={(locationId) => onLocationSelect("start", locationId)}
+        />
 
-          <button type="button" className="swap-button" onClick={onSwap} aria-label="Swap start and destination">
-            Swap
-          </button>
+        <button type="button" className="swap-button" onClick={onSwap} aria-label="Swap start and destination">
+          Swap
+        </button>
 
-          <LocationSearchField
-            label="Destination"
-            value={endLocation}
-            locations={locations}
-            onSelect={(locationId) => onLocationSelect("end", locationId)}
-          />
-        </div>
+        <LocationSearchField
+          label="Destination"
+          value={endLocation}
+          locations={locations}
+          onSelect={(locationId) => onLocationSelect("end", locationId)}
+        />
 
         <div className="mode-control">
-          <span>Optimization</span>
+          <span className="field-label">Route</span>
           <div className="mode-segmented" role="radiogroup" aria-label="Optimization">
             {optimizationModes.map((mode) => (
               <button
@@ -55,21 +53,17 @@ export default function RouteForm({
                 aria-pressed={optimization === mode.id}
                 onClick={() => onOptimizationChange(mode.id)}
               >
-                {mode.label}
+                {mode.id === "fastest" ? "Fastest" : "Shortest"}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="planner-meta-row">
-          <p>Search by name and compare the planner route directly on the map.</p>
-          <span>Map view only</span>
-        </div>
-
-        {validationError ? <p className="message error">{validationError}</p> : null}
+        {validationError ? <p className="inline-message error">{validationError}</p> : null}
 
         <button type="submit" className="primary-cta" disabled={loading}>
-          {loading ? "Finding route..." : "Get route"}
+          <span className={loading ? "button-spinner" : "button-spinner hidden"} aria-hidden="true" />
+          {loading ? "Loading route..." : "Get Route"}
         </button>
       </form>
     </section>

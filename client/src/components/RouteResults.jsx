@@ -4,228 +4,135 @@ function formatMode(mode) {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
-function formatOptimizationLabel(optimization) {
-  return optimization === "shortest" ? "Shortest distance" : "Fastest arrival";
+function summarizeModes(route) {
+  const labels = (route.breakdown || []).map((entry) => entry.label);
+  return labels.length ? labels.join(" + ") : formatMode(route.highlights?.dominantMode || "walk");
 }
 
-function formatInstruction(step) {
-  const busMatch = step.instruction.match(/^Take Bus ([A-Za-z0-9]+) from stop \d+ to stop \d+$/);
+function normalizeInstruction(step) {
+  const instruction = step.instruction || "";
 
-  if (busMatch) {
-    return `Ride Bus ${busMatch[1]} to the next shuttle transfer.`;
+  if (instruction.startsWith("Take the ")) {
+    return instruction.replace(/^Take the /, "");
   }
 
-  return step.instruction;
+  if (instruction.startsWith("Take Bus ")) {
+    return instruction.replace(/^Take /, "");
+  }
+
+  return instruction;
 }
 
-function getTradeoffCopy(route, comparisonRoute) {
-  if (!comparisonRoute) {
-    return "Best available route from the current planner run.";
-  }
+function LoadingCard() {
+  return (
+    <aside className="panel results-panel">
+      <div className="results-loading-header">
+        <span className="loading-dot" aria-hidden="true" />
+        <p>Loading route...</p>
+      </div>
 
-  const sameDistance = Math.abs((route.totals?.rawDistance || 0) - (comparisonRoute.totals?.rawDistance || 0)) < 0.01;
-  const sameGeometry =
-    JSON.stringify(route.geometry?.coordinates || []) === JSON.stringify(comparisonRoute.geometry?.coordinates || []);
+      <section className="result-card summary-card skeleton-card" aria-hidden="true">
+        <div className="skeleton skeleton-title" />
+        <div className="metric-grid">
+          <div className="metric-card">
+            <div className="skeleton skeleton-label" />
+            <div className="skeleton skeleton-value" />
+          </div>
+          <div className="metric-card">
+            <div className="skeleton skeleton-label" />
+            <div className="skeleton skeleton-value" />
+          </div>
+          <div className="metric-card">
+            <div className="skeleton skeleton-label" />
+            <div className="skeleton skeleton-value" />
+          </div>
+        </div>
+      </section>
 
-  if (sameGeometry || sameDistance) {
-    return "Both modes follow the same corridor here. The main difference is pace, not the line on the map.";
-  }
-
-  if (route.optimization === "fastest") {
-    return `Fastest arrives in ${route.totals.time} instead of ${comparisonRoute.totals.time}, with a slightly longer line on the map.`;
-  }
-
-  return `Shortest keeps the trip to ${route.totals.distance} instead of ${comparisonRoute.totals.distance}, with a slower arrival.`;
+      <section className="result-card skeleton-card" aria-hidden="true">
+        <div className="skeleton skeleton-step" />
+        <div className="skeleton skeleton-step" />
+        <div className="skeleton skeleton-step short" />
+      </section>
+    </aside>
+  );
 }
 
-function buildBreakdownSummary(breakdown = []) {
-  if (!breakdown.length) {
-    return "No mode breakdown yet.";
-  }
-
-  return breakdown
-    .map((entry) => `${entry.label} ${entry.distance}`)
-    .join(" · ");
-}
-
-function getPrimaryMode(route) {
-  if (route.breakdown?.length) {
-    return route.breakdown
-      .slice()
-      .sort((left, right) => {
-        if ((right.rawDistance || 0) !== (left.rawDistance || 0)) {
-          return (right.rawDistance || 0) - (left.rawDistance || 0);
-        }
-
-        return (right.rawTime || 0) - (left.rawTime || 0);
-      })[0]?.mode;
-  }
-
-  return route.highlights?.dominantMode || "walk";
-}
-
-function getEngineLabel(engine) {
-  if (engine === "cpp") {
-    return "Real C++ route";
-  }
-
-  if (engine === "demo-fallback") {
-    return "Fallback route";
-  }
-
-  return "Demo route";
-}
-
-function getTimeLabel(route) {
-  return route.optimization === "shortest" ? "Est. walking time" : "Travel time";
-}
-
-function getWhyCopy(route, comparisonRoute) {
-  const sameDistance = comparisonRoute ? Math.abs((route.totals?.rawDistance || 0) - (comparisonRoute.totals?.rawDistance || 0)) < 0.01 : false;
-  const sameGeometry =
-    comparisonRoute && JSON.stringify(route.geometry?.coordinates || []) === JSON.stringify(comparisonRoute.geometry?.coordinates || []);
-
-  if (route.optimization === "shortest" && (sameGeometry || sameDistance)) {
-    return "Shortest keeps the same corridor but estimates the trip as a full walking pace, which is why the time reads longer than the fastest option.";
-  }
-
-  if (route.optimization === "shortest") {
-    return "Shortest minimizes total path distance. Its time is currently estimated from the compact path at walking pace.";
-  }
-
-  return route.explanation;
-}
-
-export default function RouteResults({ route, comparisonRoute, error, loading, formState }) {
+export default function RouteResults({ route, error, loading, formState }) {
   const startLocation = getLocationOptionById(formState.start);
   const endLocation = getLocationOptionById(formState.end);
-  const primaryMode = getPrimaryMode(route || {});
 
   if (loading) {
-    return (
-      <aside className="floating-panel trip-panel">
-        <div className="trip-card loading">
-          <p className="panel-kicker">Finding route</p>
-          <h2>Computing the best path.</h2>
-          <p>Pulling a fresh route from the planner and shaping it for the map.</p>
-        </div>
-      </aside>
-    );
+    return <LoadingCard />;
   }
 
   if (error) {
     return (
-      <aside className="floating-panel trip-panel">
-        <div className="trip-card error">
-          <p className="panel-kicker">Route status</p>
-          <h2>Trip unavailable</h2>
-          <p className="message error">{error}</p>
-        </div>
+      <aside className="panel results-panel">
+        <section className="result-card state-card">
+          <p className="eyebrow">Route</p>
+          <h2>No route found</h2>
+          <p className="support-copy">{error}</p>
+        </section>
       </aside>
     );
   }
 
   if (!route) {
     return (
-      <aside className="floating-panel trip-panel">
-        <div className="trip-card empty">
-          <p className="panel-kicker">Trip card</p>
-          <h2>Select two places to preview a route.</h2>
-          <p>The summary, route line, and step timeline will appear here after a search.</p>
-        </div>
+      <aside className="panel results-panel">
+        <section className="result-card state-card">
+          <p className="eyebrow">Ready</p>
+          <h2>Plan a trip</h2>
+          <p className="support-copy">Choose a start and destination to see the best route.</p>
+        </section>
       </aside>
     );
   }
 
   return (
-    <aside className="floating-panel trip-panel">
-      <section className="trip-card summary">
-        <div className="trip-card-topline">
+    <aside className="panel results-panel">
+      <section className="result-card summary-card">
+        <div className="summary-heading">
           <div>
-            <p className="panel-kicker">Trip summary</p>
-            <h2>{route.totals.time}</h2>
-            <p className="trip-time-caption">{getTimeLabel(route)}</p>
+            <p className="eyebrow">{route.optimization === "fastest" ? "Fastest" : "Shortest"}</p>
+            <h2>
+              {startLocation?.label} to {endLocation?.label}
+            </h2>
           </div>
-          <span className={`optimization-badge ${route.optimization}`}>{formatOptimizationLabel(route.optimization)}</span>
+          <span className="summary-badge">{route.steps.length} steps</span>
         </div>
 
-        <div className="trip-summary-route">
-          <div>
-            <span>Start</span>
-            <strong>{startLocation?.label}</strong>
-          </div>
-          <div className="trip-route-divider" />
-          <div>
-            <span>Destination</span>
-            <strong>{endLocation?.label}</strong>
-          </div>
-        </div>
-
-        <div className="trip-stat-grid">
-          <article>
+        <div className="metric-grid">
+          <article className="metric-card">
+            <span>Time</span>
+            <strong>{route.totals.time}</strong>
+          </article>
+          <article className="metric-card">
             <span>Distance</span>
             <strong>{route.totals.distance}</strong>
           </article>
-          <article>
-            <span>Mode</span>
-            <strong>{formatMode(primaryMode)}</strong>
+          <article className="metric-card">
+            <span>Modes</span>
+            <strong>{summarizeModes(route)}</strong>
           </article>
         </div>
-
-        <div className="trip-breakdown">
-          <span>Mode breakdown</span>
-          <p>{buildBreakdownSummary(route.breakdown)}</p>
-        </div>
-
-        <div className="trip-engine-note">
-          <span>{getEngineLabel(route.engine)}</span>
-          {route.fallbackReason ? <p>{route.fallbackReason}</p> : null}
-        </div>
       </section>
 
-      {comparisonRoute ? (
-        <section className="trip-card compare">
-          <div className="compact-card-header">
-            <p className="panel-kicker">Compare modes</p>
-            <span>{comparisonRoute.totals.time}</span>
-          </div>
-          <div className="compare-grid">
-            <article>
-              <span>Selected</span>
-              <strong>{formatOptimizationLabel(route.optimization)}</strong>
-            </article>
-            <article>
-              <span>Alternate</span>
-              <strong>{formatOptimizationLabel(comparisonRoute.optimization)}</strong>
-            </article>
-          </div>
-          <p className="compact-note">{getTradeoffCopy(route, comparisonRoute)}</p>
-        </section>
-      ) : null}
-
-      <section className="trip-card why">
-        <div className="compact-card-header">
-          <p className="panel-kicker">Why this route?</p>
-          <span>{route.steps.length} steps</span>
+      <section className="result-card">
+        <div className="steps-header">
+          <p className="eyebrow">Directions</p>
         </div>
-        <p>{getWhyCopy(route, comparisonRoute)}</p>
-      </section>
-
-      <section className="trip-card steps">
-        <div className="compact-card-header">
-          <p className="panel-kicker">Route steps</p>
-          <span>{route.summary}</span>
-        </div>
-        <ol className="timeline">
+        <ol className="steps-list">
           {route.steps.map((step) => (
-            <li key={step.index} className="timeline-step">
-              <span className={`timeline-index ${step.mode}`}>{step.index}</span>
-              <div className="timeline-body">
-                <div className="timeline-row">
-                  <span className="timeline-mode">{formatMode(step.mode)}</span>
-                  <span className="timeline-meta">{[step.distance, step.time].filter(Boolean).join(" · ") || "Transit segment"}</span>
+            <li key={step.index} className="step-row">
+              <span className={`step-index ${step.mode}`}>{step.index}</span>
+              <div className="step-copy">
+                <div className="step-meta">
+                  <span>{formatMode(step.mode)}</span>
+                  <span>{[step.distance, step.time].filter(Boolean).join(" · ")}</span>
                 </div>
-                <strong>{formatInstruction(step)}</strong>
+                <strong>{normalizeInstruction(step)}</strong>
               </div>
             </li>
           ))}

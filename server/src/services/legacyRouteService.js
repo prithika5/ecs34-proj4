@@ -29,10 +29,6 @@ function buildAdjacency(edges) {
 
 const adjacency = buildAdjacency(graph.edges);
 
-function getWeight(edge, optimization) {
-  return optimization === "fastest" ? edge.time : edge.distance;
-}
-
 function edgeMatchesPreference(edge, modePreference) {
   return modePreference === "any" || edge.mode === modePreference;
 }
@@ -56,19 +52,47 @@ function toTitleCase(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function reconstructRoute(previous, start, end) {
+function getTransferPenalty(previousMode, nextMode, optimization) {
+  if (!previousMode || previousMode === nextMode) {
+    return 0;
+  }
+
+  if (optimization === "fastest") {
+    return previousMode === "shuttle" || nextMode === "shuttle" ? 2 : 1;
+  }
+
+  return 0.12;
+}
+
+function getEdgeCost(edge, optimization, previousMode) {
+  const baseCost = optimization === "fastest" ? edge.time : edge.distance;
+  const transferPenalty = getTransferPenalty(previousMode, edge.mode, optimization);
+  const tieBreaker = optimization === "fastest" ? edge.distance * 0.05 : edge.time * 0.005;
+
+  return baseCost + transferPenalty + tieBreaker;
+}
+
+function buildStateKey(nodeId, mode) {
+  return `${nodeId}::${mode || "start"}`;
+}
+
+function reconstructRoute(previous, start, endStateKey) {
   const path = [];
-  let current = end;
+  let currentStateKey = endStateKey;
 
-  while (current && current !== start) {
-    const edge = previous.get(current);
+  while (currentStateKey) {
+    const entry = previous.get(currentStateKey);
 
-    if (!edge) {
-      return null;
+    if (!entry) {
+      break;
     }
 
-    path.unshift(edge);
-    current = edge.from;
+    path.unshift(entry.edge);
+    currentStateKey = entry.previousStateKey;
+  }
+
+  if (!path.length || path[0].from !== start) {
+    return null;
   }
 
   return path;
@@ -83,12 +107,12 @@ function explainRoute(route, optimization, modePreference) {
   const dominantMode = Object.entries(modeCount).sort((left, right) => right[1] - left[1])[0]?.[0] || "walk";
   const tradeoff =
     optimization === "fastest"
-      ? "It prioritizes low travel time even when the total distance is slightly longer."
-      : "It stays compact on distance even if that means a slower overall pace.";
+      ? "Prioritizes lower travel time and avoids unnecessary transfers."
+      : "Keeps the route compact while preferring cleaner, more direct segments.";
 
-  const preferenceNote = modePreference !== "any" ? ` It only uses ${modePreference} segments.` : "";
+  const preferenceNote = modePreference !== "any" ? ` Uses ${modePreference} only.` : "";
 
-  return `${toTitleCase(optimization)} mode leans on ${dominantMode} segments.${preferenceNote} ${tradeoff}`;
+  return `${toTitleCase(optimization)} route with mostly ${dominantMode} segments.${preferenceNote} ${tradeoff}`;
 }
 
 function buildHighlights(steps, optimization, modePreference) {
@@ -103,11 +127,7 @@ function buildHighlights(steps, optimization, modePreference) {
     dominantMode,
     stepCount: steps.length,
     tradeoffLabel: optimization === "fastest" ? "Saves time" : "Cuts distance",
-    modePreference,
-    campusFeel:
-      optimization === "fastest"
-        ? "Shuttle and bike links do most of the heavy lifting on this trip."
-        : "This route stays compact and campus-centric even if it takes longer."
+    modePreference
   };
 }
 
@@ -159,6 +179,95 @@ function buildBreakdown(steps) {
   }));
 }
 
+function computeBestPath(start, end, optimization, modePreference) {
+  const distances = new Map();
+  const previous = new Map();
+  const frontier = [
+    {
+      stateKey: buildStateKey(start, null),
+      nodeId: start,
+      previousMode: null,
+      cost: 0,
+      steps: 0
+    }
+  ];
+
+  distances.set(buildStateKey(start, null), {
+    cost: 0,
+    steps: 0
+  });
+
+  let bestEndStateKey = null;
+  let bestEndScore = Number.POSITIVE_INFINITY;
+  let bestEndSteps = Number.POSITIVE_INFINITY;
+
+  while (frontier.length > 0) {
+    frontier.sort((left, right) => {
+      if (left.cost !== right.cost) {
+        return left.cost - right.cost;
+      }
+
+      return left.steps - right.steps;
+    });
+
+    const current = frontier.shift();
+    const recorded = distances.get(current.stateKey);
+
+    if (!recorded || current.cost > recorded.cost || (current.cost === recorded.cost && current.steps > recorded.steps)) {
+      continue;
+    }
+
+    if (current.nodeId === end) {
+      bestEndStateKey = current.stateKey;
+      bestEndScore = current.cost;
+      bestEndSteps = current.steps;
+      break;
+    }
+
+    const edges = adjacency.get(current.nodeId) || [];
+
+    for (const edge of edges) {
+      if (!edgeMatchesPreference(edge, modePreference)) {
+        continue;
+      }
+
+      const nextStateKey = buildStateKey(edge.to, edge.mode);
+      const nextCost = current.cost + getEdgeCost(edge, optimization, current.previousMode);
+      const nextSteps = current.steps + 1;
+      const previousBest = distances.get(nextStateKey);
+
+      if (
+        previousBest &&
+        (previousBest.cost < nextCost || (previousBest.cost === nextCost && previousBest.steps <= nextSteps))
+      ) {
+        continue;
+      }
+
+      distances.set(nextStateKey, {
+        cost: nextCost,
+        steps: nextSteps
+      });
+      previous.set(nextStateKey, {
+        edge,
+        previousStateKey: current.stateKey
+      });
+      frontier.push({
+        stateKey: nextStateKey,
+        nodeId: edge.to,
+        previousMode: edge.mode,
+        cost: nextCost,
+        steps: nextSteps
+      });
+    }
+  }
+
+  if (!bestEndStateKey || !Number.isFinite(bestEndScore) || !Number.isFinite(bestEndSteps)) {
+    return null;
+  }
+
+  return reconstructRoute(previous, start, bestEndStateKey);
+}
+
 export function computeLegacyRoute({ start, end, optimization, modePreference = "any" }) {
   if (!graph.nodes[start] || !graph.nodes[end]) {
     throw createApiError(400, "INVALID_LOCATION", "Start and end must be valid RouteHacker locations.");
@@ -176,55 +285,7 @@ export function computeLegacyRoute({ start, end, optimization, modePreference = 
     throw createApiError(400, "SAME_LOCATION", "Choose two different locations to compute a route.");
   }
 
-  const distances = new Map(Object.keys(graph.nodes).map((nodeId) => [nodeId, Number.POSITIVE_INFINITY]));
-  const previous = new Map();
-  const unvisited = new Set(Object.keys(graph.nodes));
-
-  distances.set(start, 0);
-
-  while (unvisited.size > 0) {
-    let current = null;
-    let currentDistance = Number.POSITIVE_INFINITY;
-
-    for (const nodeId of unvisited) {
-      const candidate = distances.get(nodeId);
-
-      if (candidate < currentDistance) {
-        current = nodeId;
-        currentDistance = candidate;
-      }
-    }
-
-    if (current === null || currentDistance === Number.POSITIVE_INFINITY) {
-      break;
-    }
-
-    if (current === end) {
-      break;
-    }
-
-    unvisited.delete(current);
-
-    const edges = adjacency.get(current) || [];
-    for (const edge of edges) {
-      if (!unvisited.has(edge.to)) {
-        continue;
-      }
-
-      if (!edgeMatchesPreference(edge, modePreference)) {
-        continue;
-      }
-
-      const tentativeDistance = currentDistance + getWeight(edge, optimization);
-
-      if (tentativeDistance < distances.get(edge.to)) {
-        distances.set(edge.to, tentativeDistance);
-        previous.set(edge.to, edge);
-      }
-    }
-  }
-
-  const steps = reconstructRoute(previous, start, end);
+  const steps = computeBestPath(start, end, optimization, modePreference);
 
   if (!steps || steps.length === 0) {
     const message =
@@ -245,7 +306,7 @@ export function computeLegacyRoute({ start, end, optimization, modePreference = 
 
   const routeSteps = steps.map((step, index) => ({
     index: index + 1,
-    instruction: `Take the ${step.label} from ${graph.nodes[step.from].label} to ${graph.nodes[step.to].label}.`,
+    instruction: `${toTitleCase(step.mode)} via ${step.label} from ${graph.nodes[step.from].label} to ${graph.nodes[step.to].label}.`,
     from: graph.nodes[step.from].label,
     to: graph.nodes[step.to].label,
     fromId: step.from,

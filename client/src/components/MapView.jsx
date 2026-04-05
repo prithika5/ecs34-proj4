@@ -27,29 +27,20 @@ function getBounds(points) {
 }
 
 function createMarkerIcon(role) {
-  const html =
-    role === "poi"
-      ? '<button type="button" class="map-marker poi"><span class="map-marker-core"></span></button>'
-      : `<button type="button" class="map-marker ${role}"><span class="map-marker-badge">${role === "start" ? "A" : "B"}</span></button>`;
-
   return {
-    html,
+    html: `<button type="button" class="map-marker ${role}"><span class="map-marker-badge">${role === "start" ? "A" : "B"}</span></button>`,
     className: "leaflet-marker-shell",
-    iconSize: role === "poi" ? [20, 20] : [34, 34],
-    iconAnchor: role === "poi" ? [10, 10] : [17, 17]
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
   };
 }
 
-export default function MapView({
-  locations,
-  startLocation,
-  endLocation,
-  route
-}) {
+export default function MapView({ startLocation, endLocation, route, loading }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const leafletRef = useRef(null);
-  const markersRef = useRef([]);
+  const startMarkerRef = useRef(null);
+  const endMarkerRef = useRef(null);
   const routeLineRef = useRef(null);
   const glowLineRef = useRef(null);
   const interactiveReady = import.meta.env.MODE !== "test";
@@ -99,17 +90,17 @@ export default function MapView({
       }).addTo(map);
 
       glowLineRef.current = L.polyline([], {
-        color: "#ffffff",
-        weight: 16,
-        opacity: 0.8,
+        color: "#f7c873",
+        weight: 14,
+        opacity: 0.45,
         lineCap: "round",
         lineJoin: "round"
       }).addTo(map);
 
       routeLineRef.current = L.polyline([], {
-        color: "#111111",
-        weight: 8,
-        opacity: 1,
+        color: "#111827",
+        weight: 7,
+        opacity: 0.92,
         lineCap: "round",
         lineJoin: "round"
       }).addTo(map);
@@ -121,8 +112,8 @@ export default function MapView({
 
     return () => {
       removed = true;
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
+      startMarkerRef.current?.remove();
+      endMarkerRef.current?.remove();
 
       if (routeLineRef.current) {
         routeLineRef.current.remove();
@@ -146,21 +137,30 @@ export default function MapView({
       return;
     }
 
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-
     const L = leafletRef.current;
 
-    for (const location of locations) {
-      const role = location.id === startLocation?.id ? "start" : location.id === endLocation?.id ? "end" : "poi";
-
-      const marker = L.marker([location.coordinates.latitude, location.coordinates.longitude], {
-        icon: L.divIcon(createMarkerIcon(role))
-      }).addTo(mapRef.current);
-
-      markersRef.current.push(marker);
+    if (startMarkerRef.current) {
+      startMarkerRef.current.remove();
+      startMarkerRef.current = null;
     }
-  }, [endLocation?.id, interactiveReady, locations, startLocation?.id]);
+
+    if (endMarkerRef.current) {
+      endMarkerRef.current.remove();
+      endMarkerRef.current = null;
+    }
+
+    if (startLocation?.coordinates) {
+      startMarkerRef.current = L.marker([startLocation.coordinates.latitude, startLocation.coordinates.longitude], {
+        icon: L.divIcon(createMarkerIcon("start"))
+      }).addTo(mapRef.current);
+    }
+
+    if (endLocation?.coordinates) {
+      endMarkerRef.current = L.marker([endLocation.coordinates.latitude, endLocation.coordinates.longitude], {
+        icon: L.divIcon(createMarkerIcon("end"))
+      }).addTo(mapRef.current);
+    }
+  }, [endLocation?.coordinates, interactiveReady, startLocation?.coordinates]);
 
   useEffect(() => {
     if (!interactiveReady || !mapRef.current || !routeLineRef.current || !glowLineRef.current) {
@@ -168,7 +168,6 @@ export default function MapView({
     }
 
     const latLngs = routeCoordinates.map(([longitude, latitude]) => [latitude, longitude]);
-
     routeLineRef.current.setLatLngs(latLngs);
     glowLineRef.current.setLatLngs(latLngs);
 
@@ -182,7 +181,7 @@ export default function MapView({
     if (bounds.west === bounds.east && bounds.south === bounds.north) {
       mapRef.current.flyTo([bounds.south, bounds.west], 15, {
         animate: true,
-        duration: 0.7
+        duration: 0.6
       });
       return;
     }
@@ -193,8 +192,8 @@ export default function MapView({
         [bounds.north, bounds.east]
       ],
       {
-        paddingTopLeft: [40, 120],
-        paddingBottomRight: [40, 180],
+        paddingTopLeft: [64, 64],
+        paddingBottomRight: [64, 64],
         maxZoom: 15
       }
     );
@@ -203,10 +202,9 @@ export default function MapView({
   if (!interactiveReady) {
     return (
       <section className="map-surface static" aria-label="Map preview">
-        <div className="map-grid" />
         <div className="map-static-card">
-          <p>OpenStreetMap preview</p>
-          <span>The map displays the selected route and Davis anchor locations.</span>
+          <p>Map preview</p>
+          <span>Routes appear here.</span>
         </div>
       </section>
     );
@@ -215,9 +213,9 @@ export default function MapView({
   return (
     <section className="map-surface">
       <div ref={containerRef} className="map-canvas" />
-      <div className="map-overlay-hint">
-        <span className="map-active-dot" />
-        <p>Map preview updates after each search.</p>
+      <div className={`map-status ${loading ? "is-loading" : ""}`}>
+        <span className="map-status-dot" aria-hidden="true" />
+        <p>{loading ? "Loading route..." : "Live map"}</p>
       </div>
     </section>
   );

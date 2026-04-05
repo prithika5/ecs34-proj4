@@ -1,56 +1,95 @@
 # RouteHacker
 
-RouteHacker is a full-stack routing app layered on top of this repository's original ECS 34 Project 4 transportation planner. The React frontend and Express backend stay in place, but `/api/route` can now call the real C++ OpenStreetMap-based planner through a subprocess adapter instead of relying only on the seeded demo graph.
+RouteHacker is a full-stack transportation planner for UC Davis. It wraps the original ECS 34 C++ routing project in a React frontend and Express API so users can request routes on a real map instead of through a CLI.
+
+The app now runs the real OpenStreetMap-based C++ planner by default for route requests. The frontend is designed as a polished demo surface for that planner: clean trip planning controls, a live map, and compact route output that is easier to scan and trust.
 
 ## Live Demo
 
 - Frontend: `https://routehacker.vercel.app`
 - Backend API: `https://routehacker-api.onrender.com`
 
-## What This Project Shows
+## Screenshots
+
+### Legacy Loading State
+
+![Planner view](docs/screenshots/Img1.png)
+
+### Clean Empty State
+
+![Route results](docs/screenshots/Img2.png)
+
+### Shortest Route Result
+
+![Alternate route view](docs/screenshots/Img3.png)
+
+### Fastest Route Result
+
+![Additional app view](docs/screenshots/Img4.png)
+
+## Highlights
 
 - React + Vite frontend in `client/`
 - Express backend in `server/`
 - Real C++ transportation planner from the ECS 34 codebase
-- OpenStreetMap + bus-system routing data from `data/`
-- Full-screen Leaflet + OpenStreetMap map with floating trip planning UI
-- Shortest-vs-fastest route computation
-- Searchable Davis pickup and destination selection with map click support
-- Legacy seeded graph fallback for unsupported/demo-only cases
+- OpenStreetMap + bus-system data from `data/`
+- Full-screen Leaflet map with a streamlined route planning UI
+- Fastest vs. shortest routing
+- Searchable Davis start and destination inputs
+- Route normalization layer for cleaner C++ planner output
 - Frontend and backend tests
-- Dev container support for both the C++ and web stacks
+- Dev container support for both C++ and web development
 
 ## Architecture
 
 ### Request Flow
 
-1. The React app lets the user choose a start and destination by search or map click, then submits `start`, `end`, `optimization`, and `modePreference` to `POST /api/route`.
-2. The Express backend validates the request in [server/src/routes/routeRouter.js](/workspaces/RouteApp-AggieWorks/server/src/routes/routeRouter.js).
-3. The route service in [server/src/services/routeService.js](/workspaces/RouteApp-AggieWorks/server/src/services/routeService.js) chooses an engine:
-   - `cpp`: use the real ECS 34 planner via subprocess
-   - `demo` / `demo-fallback`: use the legacy seeded graph
-4. The C++ adapter executable [src/routeplanner_web.cpp](/workspaces/RouteApp-AggieWorks/src/routeplanner_web.cpp) loads `davis.osm`, `stops.csv`, and `routes.csv`, computes a route, and returns JSON.
-5. Express forwards the normalized route payload back to the frontend, including route geometry for the map polyline and a compact transportation breakdown for the floating trip card.
+1. The React app submits `start`, `end`, `optimization`, and `modePreference` to `POST /api/route`.
+2. Express validates the request in [server/src/routes/routeRouter.js](/workspaces/RouteApp-AggieWorks/server/src/routes/routeRouter.js).
+3. The route service in [server/src/services/routeService.js](/workspaces/RouteApp-AggieWorks/server/src/services/routeService.js) selects the routing engine.
+4. The C++ adapter in [src/routeplanner_web.cpp](/workspaces/RouteApp-AggieWorks/src/routeplanner_web.cpp) loads `davis.osm`, `stops.csv`, and `routes.csv`, computes a route, and returns JSON.
+5. The backend normalizes the response in [server/src/services/cppPlannerService.js](/workspaces/RouteApp-AggieWorks/server/src/services/cppPlannerService.js) so the UI receives cleaner steps, breakdowns, and summaries.
+6. The frontend renders the route geometry, summary metrics, and directions.
 
-### Why The Fallback Still Exists
+## Current Engine Behavior
 
-The web app currently exposes a `modePreference` filter (`walk`, `bike`, `shuttle`) that the original C++ planner API does not yet expose directly. For requests that the C++ adapter cannot satisfy yet, the backend falls back to the seeded demo graph in [server/src/services/legacyRouteService.js](/workspaces/RouteApp-AggieWorks/server/src/services/legacyRouteService.js). That keeps the current product surface working while the real planner integration is being expanded.
+The app is currently configured to prefer the real C++ planner path.
+
+- Default mode: `cpp`
+- Successful C++ responses return `engine: "cpp"`
+- If the C++ planner cannot complete, the API returns an error instead of silently switching engines
+- The C++ adapter currently supports `modePreference: "any"` only
+
+That means the strongest demo path is:
+
+```json
+{
+  "start": "aggie_works",
+  "end": "west_village",
+  "optimization": "fastest",
+  "modePreference": "any"
+}
+```
+
+### Performance Note
+
+The real C++ planner can take noticeably longer than the demo engine in local development. A route request may take around 20 seconds depending on the trip and environment. The backend includes a timeout guard so stalled planner calls fail explicitly instead of hanging forever.
 
 ## Key Files
 
 - [src/routeplanner_web.cpp](/workspaces/RouteApp-AggieWorks/src/routeplanner_web.cpp): non-interactive C++ adapter for web requests
 - [src/transplanner.cpp](/workspaces/RouteApp-AggieWorks/src/transplanner.cpp): original CLI entry point
 - [src/DijkstraTransportationPlanner.cpp](/workspaces/RouteApp-AggieWorks/src/DijkstraTransportationPlanner.cpp): core ECS 34 routing logic
-- [server/src/services/cppPlannerService.js](/workspaces/RouteApp-AggieWorks/server/src/services/cppPlannerService.js): Node subprocess bridge to the C++ adapter
-- [server/src/services/routeService.js](/workspaces/RouteApp-AggieWorks/server/src/services/routeService.js): engine selection and fallback orchestration
-- [server/src/services/legacyRouteService.js](/workspaces/RouteApp-AggieWorks/server/src/services/legacyRouteService.js): old seeded graph engine preserved as legacy mode
-- [shared/routeOptions.js](/workspaces/RouteApp-AggieWorks/shared/routeOptions.js): shared UI metadata plus location coordinates for the adapter
+- [server/src/services/cppPlannerService.js](/workspaces/RouteApp-AggieWorks/server/src/services/cppPlannerService.js): Node subprocess bridge and response normalization for the C++ planner
+- [server/src/services/routeService.js](/workspaces/RouteApp-AggieWorks/server/src/services/routeService.js): engine selection and request caching
+- [server/src/services/legacyRouteService.js](/workspaces/RouteApp-AggieWorks/server/src/services/legacyRouteService.js): seeded JS fallback engine kept for explicit demo/testing use
+- [shared/routeOptions.js](/workspaces/RouteApp-AggieWorks/shared/routeOptions.js): shared UI metadata and location coordinates
 
 ## Local Setup
 
 ### Dev Container
 
-Open the repository in the provided dev container at [.devcontainer/devcontainer.json](/workspaces/RouteApp-AggieWorks/.devcontainer/devcontainer.json). The container includes both the legacy C++ toolchain and the Node-based web stack.
+Open the repository in the provided dev container at [.devcontainer/devcontainer.json](/workspaces/RouteApp-AggieWorks/.devcontainer/devcontainer.json). It includes both the C++ toolchain and the Node-based web stack.
 
 ### Install Dependencies
 
@@ -68,7 +107,7 @@ Create `client/.env` from `client/.env.example` and set:
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
-### Build The C++ Web Adapter
+### Build the C++ Web Adapter
 
 From the repo root:
 
@@ -82,9 +121,7 @@ That builds:
 bin/routeplanner_web
 ```
 
-### Run The Integrated Stack
-
-After the adapter is built:
+### Run the App
 
 ```bash
 npm run dev
@@ -95,20 +132,24 @@ That starts:
 - the API at `http://localhost:3000`
 - the client at `http://localhost:5173`
 
-If the C++ adapter binary is missing, the backend automatically falls back to the seeded demo engine for `auto` mode.
-
 ## Engine Control
 
-The backend supports an engine switch through `ROUTE_ENGINE`:
+The backend supports the following engine modes through `ROUTE_ENGINE`:
 
-- `auto`: use the C++ planner when available, otherwise fall back
 - `cpp`: require the C++ planner
-- `demo`: always use the seeded demo graph
+- `demo`: use the seeded JS graph
+- `auto`: use the C++ planner when available, otherwise fall back
 
 Example:
 
 ```bash
 ROUTE_ENGINE=cpp npm run dev --workspace server
+```
+
+If you need more time for the real planner locally, you can raise the timeout:
+
+```bash
+CPP_PLANNER_TIMEOUT_MS=30000 npm run dev
 ```
 
 ## API Contract
@@ -153,7 +194,7 @@ npm run build
 make
 ```
 
-The automated tests run in demo mode for determinism and speed. The real C++ planner path was also smoke-tested locally by compiling `bin/routeplanner_web` and invoking it through the Express service.
+The automated server tests explicitly run in demo mode for determinism and speed. The real C++ path was validated separately by compiling `bin/routeplanner_web` and exercising it through the Express service.
 
 ## Legacy Planner
 
@@ -164,4 +205,4 @@ The original ECS 34 Project 4 C++ planner still lives in:
 - `testsrc/`
 - `Makefile`
 
-That preserves the course project structure while the web app demonstrates how the planner can be wrapped as a product-facing service.
+That preserves the original course project structure while RouteHacker demonstrates how to turn the planner into a product-facing web app.
