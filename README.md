@@ -11,10 +11,6 @@ The app now runs the real OpenStreetMap-based C++ planner by default for route r
 
 ## Screenshots
 
-### Legacy Loading State
-
-![Planner view](docs/screenshots/Img1.png)
-
 ### Clean Empty State
 
 ![Route results](docs/screenshots/Img2.png)
